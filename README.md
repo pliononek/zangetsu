@@ -5,95 +5,99 @@
 ![Java](https://img.shields.io/badge/Java-21-red.svg)
 ![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)
 
-Kompleksowy mod inspirowany uniwersum **Bleach**, wprowadzający Zanpakutō Ichigo Kurosakiego – **Zangetsu**, formę **Shikai**, legendarne **Bankai: Tensa Zangetsu**, niszczycielskie **Getsuga Tenshō**, technikę poruszania się **Shunpo**, medytację **Jinzen** oraz **Wewnętrzny Świat** z pojedynkami przeciwko **White Ichigo**!
+An anime-inspired mod for Minecraft based on the **Bleach** universe, featuring Ichigo Kurosaki's iconic Zanpakutō **Zangetsu**, its **Shikai** form, the legendary **Bankai: Tensa Zangetsu**, devastating **Getsuga Tenshō** slashes, **Shunpo** (Flash Step), **Jinzen Meditation**, and the **Inner World** trial against **White Ichigo**!
 
 ---
 
-## 🌟 Główne Funkcje
+## 🌟 Key Features
 
-### 🗡️ 1. Progresja Zanpakutō i Rytuał Jinzen
-* **Asauchi**: Surowe ostrze Shinigami będące początkiem Twojej drogi.
-* **Medytacja Jinzen**:
-  1. Stwórz matę 3x3 z **Białych Dywanów** (`White Carpet`).
-  2. Stań na środku dywanów i kucnij (`Shift`) trzymając **Asauchi** lub **Zangetsu Shikai**.
-  3. Po 3 sekundach medytacji z biciem serca Twoja dusza zostanie przeniesiona do **Wewnętrznego Świata**.
+### 🗡️ 1. Zanpakutō Progression & Jinzen Meditation
+* **Asauchi**: The base nameless Shinigami blade where your journey begins.
+* **Jinzen Meditation Ritual**:
+  1. Build a 3x3 platform of **White Carpets** (`White Carpet`).
+  2. Stand in the center and crouch (`Shift`) while holding an **Asauchi** or **Zangetsu Shikai**.
+  3. After 3 seconds of meditation accompanied by heartbeat sounds, your soul is projected into the **Inner World**.
 
 ---
 
-### 🏙️ 2. Wewnętrzny Świat & Walki z Bossem (White Ichigo)
-Wewnętrzny Świat to panoramiczny wymiar pełen poziomych wieżowców zawieszonych w bezkresnym niebie w pełnym świetle południowego słońca.
-* **1. Próba (Shikai)** – wejście z **Asauchi**:
-  * Zmierz się ze swoim wewnętrznym Hollowem posługującym się Zangetsu Shikai.
-  * Zwycięstwo przekształca Twoje Asauchi w potężny tasak **Zangetsu Shikai**!
-* **2. Próba (Bankai Mastery)** – wejście z **Zangetsu Shikai**:
-  * Bezwzględny pojedynek z White Ichigo walczącym w pełnym **Bankai (Tensa Zangetsu)**.
-  * Posiada **zestaw anty-cheese**: odbija 100% strzał z łuku mieczem, natychmiastowo teleportuje się na klocki jeśli gracz spróbuje się podbudować, a w fazie szału roztrzaskuje tarcze gracza.
-  * **Zbalansowana walka**: uczciwa, dynamiczna i możliwa do wygrania w diamentowym secie Protection IV.
-  * Pokonanie bossa trwale odblokowuje moc **Bankai**!
+### 🏙️ 2. The Inner World & Boss Battles (White Ichigo)
+The Inner World is a panoramic dimension suspended among horizontal sideways skyscrapers under a clear midday sun.
+* **Trial 1 (Shikai)** – Entered holding an **Asauchi**:
+  * Face your Inner Hollow wielding Zangetsu Shikai.
+  * Victory permanently transforms your Asauchi into the massive cleaver **Zangetsu Shikai**!
+* **Trial 2 (Bankai Mastery)** – Entered holding **Zangetsu Shikai**:
+  * A fierce duel against White Ichigo fighting in full **Bankai (Tensa Zangetsu)**.
+  * Equipped with an **anti-cheese arsenal**: deflects 100% of incoming arrows and projectiles with sword parries, instantly executes a vertical Shunpo onto player pillars if you attempt to build up, and shatters blocking shields during his Infusion enrage phase.
+  * **Balanced & Fair**: Dynamic, challenging, and fully winnable in standard Diamond Protection IV gear.
+  * Defeating the boss permanently unlocks **Bankai**!
 
 ---
 
 ### ⚡ 3. Zangetsu Shikai
-* **Gigantyczny Tasak**: Trójwymiarowy, wierny model Zangetsu. Niezniszczalna broń o wysokich obrażeniach.
-* **Getsuga Tenshō (`Shift + PPM`)**:
-  * Przytrzymaj, aby naładować spiralną energię duchową i wystrzelić łuk lazurowego Reiatsu.
-  * **Wybór orientacji cięcia (`[R]`)**: przełączaj w locie między cięciem **Poziomym ↔** (ogromny łuk czyszczący grupy wrogów) a cięciem **Pionowym ↕** (precyzyjna, rozcinająca fala).
-* **Pasywna Regeneracja Reiatsu**: Trzymanie Shikai powoli odnawia energię duchową.
+* **Giant Cleaver**: Full 3D model faithful to the source material. Completely unbreakable with high combat damage.
+* **Getsuga Tenshō (`Shift + Right Click`)**:
+  * Hold to gather spiritual pressure and unleash an arc of azure Reiatsu.
+  * **Slash Orientation Toggle (`[R]`)**: Switch instantly between **Horizontal ↔** (a wide sweeping arc that clears groups of mobs) and **Vertical ↕** (a focused, ground-cleaving vertical wave).
+* **Passive Reiatsu Regeneration**: Holding Shikai steadily restores spiritual energy over time.
 
 ---
 
 ### 🌑 4. Bankai: Tensa Zangetsu
-* **Monumentalna Transformacja (`[B]`)**:
-  * Przytrzymaj klawisz `[B]` przez 2.5 sekundy. Postać wyciąga rękę przed siebie, kamera drży, a niebo rozświetla czarno-czerwony filar duchowego ciśnienia.
-  * Zangetsu przekształca się w czarną katanę **Tensa Zangetsu** z łańcuchem i swastykowatą gardą.
-  * Ponowne wciśnięcie `[B]` cofa do Shikai (z 3-sekundowym cooldownem zapobiegającym przypadkowej dezaktywacji).
-* **Kuroi Getsuga Tenshō (`PPM`)**:
-  * Szybka, czarno-czerwona Getsuga o niesamowitej sile uderzenia i prędkości lotu.
+* **Monumental Transformation (`[B]`)**:
+  * Hold the `[B]` key for 2.5 seconds with Shikai drawn. The character outstretches their arm forward as camera tremors escalate, erupting into a towering black & crimson pillar of spiritual pressure.
+  * Zangetsu condenses into the sleek jet-black katana **Tensa Zangetsu** featuring its chain and manji guard.
+  * Pressing `[B]` again reverts back to Shikai (protected by a 3-second cooldown to prevent accidental toggles).
+* **Kuroi Getsuga Tenshō (`Right Click`)**:
+  * High-speed, black-and-crimson Getsuga delivering immense impact and projectile velocity.
 * **Shunpo (`[X]`)**:
-  * Błyskawiczny krok Sonido/Shunpo w stronę, w którą patrzy gracz, z efektem dźwiękowym i cząsteczkami ciśnienia.
+  * Instant Flash Step in the player's look direction with sound effects and air distortion particles.
 * **Getsuga Infusion (`[V]`)**:
-  * Uwolnienie czarnego płomienia Reiatsu na ostrzu:
-    * Ciosy wręcz zadają **60 obrażeń** z wybuchem duchowym.
-    * Stałe buffy: **Siła III** oraz **Szybkość V**.
-    * Cięcia Getsugi lecą o 35% szybciej i zadają 1.5x większy wybuch.
-    * **Koszt**: całkowity brak regeneracji Reiatsu oraz drenaż 4 pkt/s (automatyczne wyłączenie przy wyczerpaniu energii).
+  * Ignites the blade with spiritual black flames:
+    * Melee strikes deal **60 damage** backed by explosive Reiatsu shockwaves.
+    * Grants passive **Strength III** and **Speed V**.
+    * Getsuga slashes fly 35% faster with 1.5x expanded explosion radius.
+    * **Cost**: Completely halts all Reiatsu regeneration and continuously drains 4 Reiatsu/sec (automatically powers down when energy is depleted).
 
 ---
 
 ### 🎴 5. Anime RPG HUD
-Zaprojektowany od zera interfejs w lewym górnym rogu ekranu (`X: 12, Y: 12`):
-* **Badge Formy**: `[SHIKAI]` / `[BANKAI]` z pulsującym ognikiem `🔥 INFUSION`.
-* **Licznik Reiatsu**: dokładny wskaźnik punktowy (np. `Reiatsu: 850 / 1000`).
-* **Dwutonowy Szklany Pasek Energii**: lazurowy błękit dla Shikai, szkarłat dla Bankai, płomienny gradient dla Infuzji.
-* **Wskaźnik Stylu Walki**: pokazuje aktualnie wybrany tryb cięcia `[R] Pionowe ↕` / `[R] Poziome ↔` oraz pasek ładowania ataku w czasie rzeczywistym (`ŁADUNEK: 0-100%`).
+A clean, modern interface positioned in the top-left corner (`X: 12, Y: 12`) to avoid overlapping vanilla survival bars:
+* **Form Badge**: `[SHIKAI]` / `[BANKAI]` with an animated pulsing `🔥 INFUSION` flame indicator.
+* **Reiatsu Readout**: Exact numeric status (e.g., `Reiatsu: 850 / 1000`).
+* **Two-Tone Gloss Energy Bar**: Azure blue for Shikai, crimson scarlet for Bankai, fiery gradient for Infusion.
+* **Combat Style Indicator**: Displays the current slash mode (`[R] Vertical ↕` / `[R] Horizontal ↔`) and real-time attack charge progress (`CHARGE: 0-100%`).
 
 ---
 
-## 🎮 Klawiszologia (Domyślne Klawisze)
+## 🎮 Keybindings (Default Controls)
 
-| Klawisz | Akcja | Opis |
+| Key | Action | Description |
 | :---: | :--- | :--- |
-| **`B`** | **Bankai / Revert** | Przytrzymaj (2.5s) trzymając Shikai, aby uwolnić Bankai. Wciśnij w Bankai, aby wrócić. |
-| **`X`** | **Shunpo** | Błyskawiczny krok w kierunku spojrzenia (wymaga Bankai). |
-| **`V`** | **Getsuga Infusion** | Przełącznik trybu szału / ognistego ostrza (wymaga Bankai). |
-| **`R`** | **Styl Cięcia** | Przełączanie między cięciem Poziomym ↔ a Pionowym ↕. |
-| **`PPM`** / **`Shift+PPM`** | **Getsuga Tenshō** | Ładowanie i wystrzał fali uderzeniowej Reiatsu. |
+| **`B`** | **Bankai / Revert** | Hold (2.5s) with Shikai to unleash Bankai. Press while in Bankai to revert. |
+| **`X`** | **Shunpo** | Flash Step in the direction you are looking (requires Bankai). |
+| **`V`** | **Getsuga Infusion** | Toggle soul flame rage mode (requires Bankai). |
+| **`R`** | **Slash Orientation** | Toggle between Horizontal ↔ and Vertical ↕ Getsuga. |
+| **`Right Click`** / **`Shift+Right Click`** | **Getsuga Tenshō** | Charge and fire the Getsuga spiritual energy wave. |
 
-*(Wszystkie klawisze można dowolnie zmienić w menu Sterowanie -> Tensa Zangetsu)*
-
----
-
-## 🛠️ Instalacja i Wymagania
-
-1. Zainstaluj **Minecraft 1.21.1**.
-2. Zainstaluj **NeoForge 21.1+** (rekomendowany oficjalny instalator NeoForge lub launcher taki jak PrismLauncher / CurseForge).
-3. Pobierz plik `zangetsu-1.0.0.jar` z zakładki [Releases](https://github.com/pliononek/zangetsu/releases).
-4. Wrzuć pobrany plik do folderu `.minecraft/mods/`.
-5. Uruchom grę i zostań Shinigami!
+*(All keybindings can be remapped in Options -> Controls -> Key Binds -> Tensa Zangetsu)*
 
 ---
 
-## 📜 Licencja
+## 🛠️ Installation & Requirements
 
-Projekt jest licencjonowany na zasadach **GNU General Public License v3.0 (GPLv3)**.  
-Szczegóły znajdują się w pliku [LICENSE](LICENSE).
+1. Install **Minecraft 1.21.1**.
+2. Install **NeoForge 21.1+** (using the official NeoForge installer or launchers such as PrismLauncher / CurseForge).
+3. Download the latest `zangetsu-1.0.0.jar` from the [Releases](https://github.com/pliononek/zangetsu/releases) page.
+4. Place the downloaded `.jar` file into your `.minecraft/mods/` directory.
+5. Launch Minecraft and awaken your inner Shinigami!
+
+---
+
+## 📜 License
+
+This project is licensed under the terms of the **GNU General Public License v3.0 (GPLv3)**.  
+See the [LICENSE](LICENSE) file for full details.
+
+---
+
+*Generated by AI*
