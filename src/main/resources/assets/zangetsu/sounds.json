@@ -1,0 +1,44 @@
+{
+  "bankai": {
+    "category": "player",
+    "subtitle": "subtitles.zangetsu.bankai",
+    "sounds": [
+      "zangetsu:bankai"
+    ]
+  },
+  "getsuga_tensho": {
+    "category": "player",
+    "subtitle": "subtitles.zangetsu.getsuga_tensho",
+    "sounds": [
+      "zangetsu:getsuga_tensho"
+    ]
+  },
+  "shunpo": {
+    "category": "player",
+    "subtitle": "subtitles.zangetsu.shunpo",
+    "sounds": [
+      "zangetsu:shunpo"
+    ]
+  },
+  "reiatsu_burst": {
+    "category": "player",
+    "subtitle": "subtitles.zangetsu.reiatsu_burst",
+    "sounds": [
+      "zangetsu:reiatsu_burst"
+    ]
+  },
+  "jinzen_heartbeat": {
+    "category": "player",
+    "subtitle": "subtitles.zangetsu.jinzen_heartbeat",
+    "sounds": [
+      "zangetsu:jinzen_heartbeat"
+    ]
+  },
+  "inner_laugh": {
+    "category": "hostile",
+    "subtitle": "subtitles.zangetsu.inner_laugh",
+    "sounds": [
+      "zangetsu:inner_laugh"
+    ]
+  }
+}
