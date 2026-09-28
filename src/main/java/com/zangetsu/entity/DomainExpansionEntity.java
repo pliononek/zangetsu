@@ -13,12 +13,17 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -28,6 +33,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -50,11 +56,14 @@ public class DomainExpansionEntity extends Entity {
     public static final int MAX_LIFETIME = 900; // 45 seconds
 
     private final Map<BlockPos, BlockState> capturedBlocks = new HashMap<>();
-    private boolean barrierBuilt = false;
+    private final Set<BlockPos> currentBarrierBlocks = new HashSet<>();
+    private int expansionTicks = 0;
+    private int floorBaseY;
 
     public DomainExpansionEntity(EntityType<?> type, Level level) {
         super(type, level);
         this.noPhysics = true;
+        this.floorBaseY = blockPosition().getY();
     }
 
     public DomainExpansionEntity(Level level, Vec3 center, Player owner) {
@@ -64,6 +73,7 @@ public class DomainExpansionEntity extends Entity {
         this.setRadius(DEFAULT_RADIUS);
         this.setLifetime(0);
         this.setFinisherTicks(-1);
+        this.floorBaseY = owner.blockPosition().getY();
     }
 
     @Override
@@ -117,50 +127,9 @@ public class DomainExpansionEntity extends Entity {
         }
     }
 
-    public void buildBarrier(ServerLevel level) {
-        if (barrierBuilt) return;
-        barrierBuilt = true;
-
-        BlockPos centerPos = blockPosition();
-        float r = getRadius();
-        double rMin = (r - 0.7) * (r - 0.7);
-        double rMax = (r + 0.5) * (r + 0.5);
-        int ir = (int) Math.ceil(r) + 1;
-
-        BlockState barrierState = ModBlocks.DOMAIN_BARRIER.get().defaultBlockState();
-        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
-
-        for (int x = -ir; x <= ir; x++) {
-            for (int y = -ir; y <= ir; y++) {
-                for (int z = -ir; z <= ir; z++) {
-                    double d2 = x * x + y * y + z * z;
-                    if (d2 >= rMin && d2 <= rMax) {
-                        mpos.set(centerPos.getX() + x, centerPos.getY() + y, centerPos.getZ() + z);
-                        BlockState old = level.getBlockState(mpos);
-                        if (!old.is(Blocks.BEDROCK) && !old.is(ModBlocks.DOMAIN_BARRIER.get()) && !old.hasBlockEntity()) {
-                            capturedBlocks.put(mpos.immutable(), old);
-                            level.setBlock(mpos, barrierState, 2);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    public void restoreBarrier(ServerLevel level) {
-        for (Map.Entry<BlockPos, BlockState> entry : capturedBlocks.entrySet()) {
-            BlockPos pos = entry.getKey();
-            if (level.getBlockState(pos).is(ModBlocks.DOMAIN_BARRIER.get())) {
-                level.setBlock(pos, entry.getValue(), 2);
-            }
-        }
-        capturedBlocks.clear();
-        barrierBuilt = false;
-    }
-
     @Override
     public boolean shouldRenderAtSqrDistance(double distance) {
-        return distance < 65536.0; // 256 blocks
+        return distance < 65536.0;
     }
 
     @Override
@@ -182,20 +151,25 @@ public class DomainExpansionEntity extends Entity {
         }
 
         ServerLevel serverLevel = (ServerLevel) level();
+        ServerPlayer owner = getOwnerPlayer(serverLevel);
 
-        // Ensure physical block barrier is constructed
-        if (!barrierBuilt && !capturedBlocks.isEmpty()) {
-            barrierBuilt = true;
-        } else if (!barrierBuilt) {
-            buildBarrier(serverLevel);
+        if (owner == null || !owner.isAlive()) {
+            shatter();
+            return;
         }
 
+        // Layered Spherical Expansion Phase (0 to 20 ticks = 1.0 second)
+        if (expansionTicks < 20) {
+            expansionTicks++;
+            handleExpansionTick(serverLevel, owner, expansionTicks);
+            return;
+        }
+
+        // Active Domain Phase
         int life = getLifetime() + 1;
         setLifetime(life);
 
-        ServerPlayer owner = getOwnerPlayer(serverLevel);
-
-        if (owner == null || !owner.isAlive() || life >= MAX_LIFETIME) {
+        if (life >= MAX_LIFETIME) {
             shatter();
             return;
         }
@@ -230,6 +204,145 @@ public class DomainExpansionEntity extends Entity {
 
         // Levitating Rain Particles
         spawnSuspendedRain(serverLevel, center, radius, owner);
+    }
+
+    private void handleExpansionTick(ServerLevel level, ServerPlayer owner, int tick) {
+        // 5-stage expanding spherical wave from center outward
+        if (tick == 1) {
+            expandStep(level, owner, 0.0, 7.0, false);
+        } else if (tick == 5) {
+            expandStep(level, owner, 7.0, 13.0, false);
+        } else if (tick == 10) {
+            expandStep(level, owner, 13.0, 18.0, false);
+        } else if (tick == 15) {
+            expandStep(level, owner, 18.0, 22.0, false);
+        } else if (tick == 20) {
+            // Final stage: locks in full 50-block diameter crystalline barrier!
+            expandStep(level, owner, 22.0, 25.0, true);
+
+            // Grand domain activation sound & title
+            level.playSound(null, blockPosition(), ModSounds.DOMAIN_EXPAND.get(), SoundSource.PLAYERS, 4.0f, 1.0f);
+            level.playSound(null, blockPosition(), ModSounds.BANKAI.get(), SoundSource.PLAYERS, 3.5f, 0.85f);
+            PacketDistributor.sendToPlayer(owner, new CameraShakePayload(50, 4.5f));
+
+            owner.connection.send(new ClientboundSetTitlesAnimationPacket(10, 60, 20));
+            owner.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§4§lROZSZERZENIE DOMENY")));
+            owner.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§c§oKōten Zangetsu (絶望を断つ月影)")));
+        }
+    }
+
+    private void expandStep(ServerLevel level, ServerPlayer owner, double rFrom, double rTo, boolean isFinal) {
+        BlockPos centerPos = blockPosition();
+        int cx = centerPos.getX();
+        int cz = centerPos.getZ();
+
+        // 1. Convert Floor to Pure Black Concrete and place Invisible Light Blocks inside current radius
+        int irTo = (int) Math.ceil(rTo);
+        for (int x = -irTo; x <= irTo; x++) {
+            for (int z = -irTo; z <= irTo; z++) {
+                double d = Math.sqrt(x * x + z * z);
+                if (d > rFrom && d <= rTo) {
+                    BlockPos floorPos = findFloorPos(level, cx + x, cz + z, floorBaseY);
+                    setDomainBlock(level, floorPos, Blocks.BLACK_CONCRETE.defaultBlockState());
+
+                    // Clear non-solid foliage/grass above the black floor
+                    BlockPos above = floorPos.above();
+                    BlockState aboveState = level.getBlockState(above);
+                    if (!aboveState.isAir() && (!aboveState.isSolid() || aboveState.is(BlockTags.FLOWERS))) {
+                        setDomainBlock(level, above, Blocks.AIR.defaultBlockState());
+                    }
+
+                    // Place invisible light blocks every 6 blocks to brightly illuminate the entire interior
+                    if (x % 6 == 0 && z % 6 == 0) {
+                        BlockState lightState = Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15);
+                        setDomainBlock(level, floorPos.above(3), lightState);
+                        setDomainBlock(level, floorPos.above(7), lightState);
+                    }
+                }
+            }
+        }
+
+        // 2. Clear previous temporary barrier blocks that are now strictly inside
+        Set<BlockPos> nextBarrierBlocks = new HashSet<>();
+        BlockState barrierState = ModBlocks.DOMAIN_BARRIER.get().defaultBlockState();
+
+        // Calculate shell at rTo
+        double rMinSq = (rTo - 0.75) * (rTo - 0.75);
+        double rMaxSq = (rTo + 0.6) * (rTo + 0.6);
+
+        for (int x = -irTo; x <= irTo; x++) {
+            for (int y = -irTo; y <= irTo; y++) {
+                for (int z = -irTo; z <= irTo; z++) {
+                    double d2 = x * x + y * y + z * z;
+                    if (d2 >= rMinSq && d2 <= rMaxSq) {
+                        BlockPos bpos = centerPos.offset(x, y, z);
+                        if (bpos.getY() > floorBaseY) {
+                            setDomainBlock(level, bpos, barrierState);
+                            nextBarrierBlocks.add(bpos);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Remove intermediate temporary barrier blocks from previous stage that are not on the new perimeter
+        for (BlockPos prevPos : currentBarrierBlocks) {
+            if (!nextBarrierBlocks.contains(prevPos) && level.getBlockState(prevPos).is(ModBlocks.DOMAIN_BARRIER.get())) {
+                if (prevPos.getY() > floorBaseY) {
+                    setDomainBlock(level, prevPos, Blocks.AIR.defaultBlockState());
+                }
+            }
+        }
+
+        currentBarrierBlocks.clear();
+        currentBarrierBlocks.addAll(nextBarrierBlocks);
+
+        // 3. Audio & Expanding Wave Particles
+        float pitch = 0.8f + (float) (rTo / 25.0) * 0.5f;
+        level.playSound(null, centerPos, ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 2.2f, pitch);
+
+        Vector3f crimson = new Vector3f(0.95f, 0.05f, 0.15f);
+        int ringPoints = (int) (rTo * 5);
+        for (int p = 0; p < ringPoints; p++) {
+            double theta = (p * 2.0 * Math.PI) / ringPoints;
+            double px = cx + Math.cos(theta) * rTo;
+            double pz = cz + Math.sin(theta) * rTo;
+            level.sendParticles(new DustParticleOptions(crimson, 1.8f),
+                    px, floorBaseY + 0.3, pz, 1, 0, 0.08, 0, 0.02);
+        }
+
+        PacketDistributor.sendToPlayer(owner, new CameraShakePayload(6, 1.2f));
+    }
+
+    private BlockPos findFloorPos(ServerLevel level, int x, int z, int baseFloorY) {
+        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos(x, baseFloorY + 6, z);
+        for (int y = baseFloorY + 6; y >= baseFloorY - 7; y--) {
+            mpos.setY(y);
+            BlockState state = level.getBlockState(mpos);
+            if (!state.isAir() && state.isSolid() && !state.is(ModBlocks.DOMAIN_BARRIER.get())) {
+                return mpos.immutable();
+            }
+        }
+        return new BlockPos(x, baseFloorY, z);
+    }
+
+    private void setDomainBlock(ServerLevel level, BlockPos pos, BlockState newState) {
+        if (!capturedBlocks.containsKey(pos)) {
+            BlockState original = level.getBlockState(pos);
+            if (original.is(Blocks.BEDROCK) || original.hasBlockEntity()) {
+                return; // Never touch bedrock or containers
+            }
+            capturedBlocks.put(pos, original);
+        }
+        level.setBlock(pos, newState, 2);
+    }
+
+    public void restoreBarrier(ServerLevel level) {
+        for (Map.Entry<BlockPos, BlockState> entry : capturedBlocks.entrySet()) {
+            level.setBlock(entry.getKey(), entry.getValue(), 2);
+        }
+        capturedBlocks.clear();
+        currentBarrierBlocks.clear();
     }
 
     private void executeSureHit(ServerLevel level, Vec3 center, float radius, ServerPlayer owner) {
@@ -448,6 +561,9 @@ public class DomainExpansionEntity extends Entity {
         if (tag.contains("Finisher")) {
             setFinisherTicks(tag.getInt("Finisher"));
         }
+        if (tag.contains("FloorBaseY")) {
+            this.floorBaseY = tag.getInt("FloorBaseY");
+        }
         if (tag.contains("CapturedBlocks", Tag.TAG_LIST)) {
             ListTag list = tag.getList("CapturedBlocks", Tag.TAG_COMPOUND);
             HolderGetter<Block> blockGetter = level().holderLookup(Registries.BLOCK);
@@ -456,9 +572,6 @@ public class DomainExpansionEntity extends Entity {
                 BlockPos pos = BlockPos.of(bTag.getLong("Pos"));
                 BlockState state = NbtUtils.readBlockState(blockGetter, bTag.getCompound("State"));
                 capturedBlocks.put(pos, state);
-            }
-            if (!capturedBlocks.isEmpty()) {
-                barrierBuilt = true;
             }
         }
     }
@@ -469,6 +582,7 @@ public class DomainExpansionEntity extends Entity {
         tag.putFloat("Radius", getRadius());
         tag.putInt("Lifetime", getLifetime());
         tag.putInt("Finisher", getFinisherTicks());
+        tag.putInt("FloorBaseY", this.floorBaseY);
 
         if (!capturedBlocks.isEmpty()) {
             ListTag list = new ListTag();

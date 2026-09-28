@@ -159,20 +159,13 @@ public class DomainExpansionItem extends Item {
                     }
                     Vec3 center = player.position().add(horizontalLook.scale(18.0));
 
-                    // Spawn 50-block diameter Domain Expansion Entity and build barrier blocks
+                    // Spawn 50-block diameter Domain Expansion Entity (handles layered expansion wave from center)
                     DomainExpansionEntity domain = new DomainExpansionEntity(serverLevel, center, player);
                     serverLevel.addFreshEntity(domain);
-                    domain.buildBarrier(serverLevel);
 
-                    // Sounds & Camera Shake
-                    serverLevel.playSound(null, player.blockPosition(), ModSounds.DOMAIN_EXPAND.get(), SoundSource.PLAYERS, 4.0f, 1.0f);
+                    // Initial pulse sound & camera shake
                     serverLevel.playSound(null, player.blockPosition(), ModSounds.BANKAI.get(), SoundSource.PLAYERS, 3.5f, 0.85f);
-                    PacketDistributor.sendToPlayer(sp, new CameraShakePayload(50, 4.5f));
-
-                    // Title Announcement
-                    sp.connection.send(new ClientboundSetTitlesAnimationPacket(10, 60, 20));
-                    sp.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§4§lROZSZERZENIE DOMENY")));
-                    sp.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§c§oKōten Zangetsu (絶望を断つ月影)")));
+                    PacketDistributor.sendToPlayer(sp, new CameraShakePayload(20, 2.5f));
 
                     player.getCooldowns().addCooldown(this, 160); // 8 sec cooldown
                 }
