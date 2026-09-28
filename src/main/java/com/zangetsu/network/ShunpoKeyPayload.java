@@ -29,11 +29,20 @@ public record ShunpoKeyPayload() implements CustomPacketPayload {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
                 ItemStack mainHand = player.getMainHandItem();
-                if (mainHand.is(ModItems.TENSA_ZANGETSU.get())) {
+                boolean isBankai = mainHand.is(ModItems.TENSA_ZANGETSU.get());
+                boolean isShikai = mainHand.is(ModItems.ZANGETSU_SHIKAI.get());
+
+                if (isBankai || isShikai) {
                     ReiatsuData data = player.getData(ModDataAttachments.REIATSU);
-                    float cost = com.zangetsu.item.ShihakushoArmorItem.isWearingFullBankaiSet(player) ? 5.0f : 10.0f;
+                    float cost;
+                    if (isBankai) {
+                        cost = com.zangetsu.item.ShihakushoArmorItem.isWearingFullBankaiSet(player) ? 5.0f : 10.0f;
+                    } else {
+                        cost = com.zangetsu.item.ShihakushoArmorItem.isWearingFullShikaiSet(player) ? 8.0f : 12.0f;
+                    }
+
                     if (data.consume(cost)) {
-                        TensaZangetsuItem.performShunpo(player);
+                        TensaZangetsuItem.performShunpo(player, isBankai);
                     } else {
                         player.displayClientMessage(Component.literal("§cNot enough Reiatsu for Shunpo! (Requires " + (int)cost + ")"), true);
                     }

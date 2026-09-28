@@ -199,9 +199,14 @@ public class TensaZangetsuItem extends SwordItem {
     }
 
     public static void performShunpo(Player player) {
+        boolean isBankai = player.getMainHandItem().is(ModItems.TENSA_ZANGETSU.get());
+        performShunpo(player, isBankai);
+    }
+
+    public static void performShunpo(Player player, boolean isBankai) {
         Level level = player.level();
         Vec3 look = player.getLookAngle();
-        double maxDistance = 14.0;
+        double maxDistance = isBankai ? 14.0 : 12.0;
 
         Vec3 start = player.getEyePosition();
         Vec3 end = start.add(look.scale(maxDistance));
@@ -210,25 +215,29 @@ public class TensaZangetsuItem extends SwordItem {
         Vec3 dest = hit.getType() == HitResult.Type.MISS ? end : hit.getLocation().subtract(look.scale(0.5));
 
         // Sounds and particles at origin
-        level.playSound(null, player.blockPosition(), ModSounds.SHUNPO.get(), SoundSource.PLAYERS, 1.8f, 1.1f);
+        level.playSound(null, player.blockPosition(), ModSounds.SHUNPO.get(), SoundSource.PLAYERS, 1.8f, isBankai ? 1.1f : 1.25f);
         if (level instanceof ServerLevel serverLevel) {
-            Vector3f black = new Vector3f(0.02f, 0.02f, 0.02f);
-            serverLevel.sendParticles(new DustParticleOptions(black, 2.0f),
+            Vector3f originColor = isBankai ? new Vector3f(0.02f, 0.02f, 0.02f) : new Vector3f(0.15f, 0.65f, 0.95f);
+            serverLevel.sendParticles(new DustParticleOptions(originColor, 2.0f),
                     player.getX(), player.getY() + 0.9, player.getZ(), 20, 0.3, 0.6, 0.3, 0.05);
+            if (!isBankai) {
+                serverLevel.sendParticles(ParticleTypes.CLOUD,
+                        player.getX(), player.getY() + 0.2, player.getZ(), 6, 0.2, 0.1, 0.2, 0.02);
+            }
         }
 
         player.teleportTo(dest.x, dest.y, dest.z);
         player.fallDistance = 0.0f;
 
         // Sounds and particles at destination
-        level.playSound(null, player.blockPosition(), ModSounds.SHUNPO.get(), SoundSource.PLAYERS, 1.8f, 1.1f);
+        level.playSound(null, player.blockPosition(), ModSounds.SHUNPO.get(), SoundSource.PLAYERS, 1.8f, isBankai ? 1.1f : 1.25f);
         if (level instanceof ServerLevel serverLevel) {
-            Vector3f crimson = new Vector3f(0.85f, 0.05f, 0.15f);
-            serverLevel.sendParticles(new DustParticleOptions(crimson, 2.0f),
+            Vector3f destColor = isBankai ? new Vector3f(0.85f, 0.05f, 0.15f) : new Vector3f(0.2f, 0.8f, 1.0f);
+            serverLevel.sendParticles(new DustParticleOptions(destColor, 2.0f),
                     dest.x, dest.y + 0.9, dest.z, 20, 0.3, 0.6, 0.3, 0.05);
 
             if (player instanceof ServerPlayer sp) {
-                PacketDistributor.sendToPlayer(sp, new CameraShakePayload(6, 1.2f));
+                PacketDistributor.sendToPlayer(sp, new CameraShakePayload(6, isBankai ? 1.2f : 0.8f));
             }
         }
     }
