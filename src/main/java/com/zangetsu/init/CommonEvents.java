@@ -59,6 +59,27 @@ public class CommonEvents {
                     }
                 }
 
+                // Armor Set Bonuses
+                if (com.zangetsu.item.ShihakushoArmorItem.isWearingFullShikaiSet(player)) {
+                    if (player.tickCount % 20 == 0) {
+                        if (!data.isInfusionActive()) {
+                            data.restore(2.0f);
+                        }
+                        player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 40, 0, false, false, false));
+                    }
+                } else if (com.zangetsu.item.ShihakushoArmorItem.isWearingFullBankaiSet(player)) {
+                    if (player.tickCount % 20 == 0) {
+                        player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 40, 1, false, false, false));
+                        player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 40, 1, false, false, false));
+                        player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 40, 1, false, false, false));
+                    }
+                    if (player.getDeltaMovement().horizontalDistanceSqr() > 0.005 && player.tickCount % 3 == 0) {
+                        org.joml.Vector3f crimson = new org.joml.Vector3f(0.9f, 0.05f, 0.15f);
+                        level.sendParticles(new net.minecraft.core.particles.DustParticleOptions(crimson, 1.2f),
+                                player.getX(), player.getY() + 0.2, player.getZ(), 1, 0.1, 0.1, 0.1, 0.01);
+                    }
+                }
+
                 // 3x3 White Carpet Jinzen Meditation Check
                 handleJinzenMeditation(player, level);
 

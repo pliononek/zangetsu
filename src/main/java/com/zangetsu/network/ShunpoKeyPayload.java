@@ -31,10 +31,11 @@ public record ShunpoKeyPayload() implements CustomPacketPayload {
                 ItemStack mainHand = player.getMainHandItem();
                 if (mainHand.is(ModItems.TENSA_ZANGETSU.get())) {
                     ReiatsuData data = player.getData(ModDataAttachments.REIATSU);
-                    if (data.consume(10.0f)) {
+                    float cost = com.zangetsu.item.ShihakushoArmorItem.isWearingFullBankaiSet(player) ? 5.0f : 10.0f;
+                    if (data.consume(cost)) {
                         TensaZangetsuItem.performShunpo(player);
                     } else {
-                        player.displayClientMessage(Component.literal("§cNot enough Reiatsu for Shunpo!"), true);
+                        player.displayClientMessage(Component.literal("§cNot enough Reiatsu for Shunpo! (Requires " + (int)cost + ")"), true);
                     }
                 }
             }

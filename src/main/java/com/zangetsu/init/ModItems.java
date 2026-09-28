@@ -37,4 +37,30 @@ public class ModItems {
                 @Override
                 public boolean mineBlock(ItemStack stack, net.minecraft.world.level.Level level, net.minecraft.world.level.block.state.BlockState state, net.minecraft.core.BlockPos pos, net.minecraft.world.entity.LivingEntity entity) { return true; }
             });
+
+    // --- Shikai Shinigami Shihakusho ---
+    public static final DeferredHolder<Item, com.zangetsu.item.ShihakushoArmorItem> SHIKAI_CHESTPLATE =
+            ITEMS.register("shikai_chestplate", () -> new com.zangetsu.item.ShihakushoArmorItem(
+                    ModArmorMaterials.SHIKAI_SHIHAKUSHO, net.minecraft.world.item.ArmorItem.Type.CHESTPLATE, false));
+
+    public static final DeferredHolder<Item, com.zangetsu.item.ShihakushoArmorItem> SHIKAI_LEGGINGS =
+            ITEMS.register("shikai_leggings", () -> new com.zangetsu.item.ShihakushoArmorItem(
+                    ModArmorMaterials.SHIKAI_SHIHAKUSHO, net.minecraft.world.item.ArmorItem.Type.LEGGINGS, false));
+
+    public static final DeferredHolder<Item, com.zangetsu.item.ShihakushoArmorItem> SHIKAI_BOOTS =
+            ITEMS.register("shikai_boots", () -> new com.zangetsu.item.ShihakushoArmorItem(
+                    ModArmorMaterials.SHIKAI_SHIHAKUSHO, net.minecraft.world.item.ArmorItem.Type.BOOTS, false));
+
+    // --- Bankai Tensa Zangetsu Shihakusho ---
+    public static final DeferredHolder<Item, com.zangetsu.item.ShihakushoArmorItem> BANKAI_CHESTPLATE =
+            ITEMS.register("bankai_chestplate", () -> new com.zangetsu.item.ShihakushoArmorItem(
+                    ModArmorMaterials.BANKAI_SHIHAKUSHO, net.minecraft.world.item.ArmorItem.Type.CHESTPLATE, true));
+
+    public static final DeferredHolder<Item, com.zangetsu.item.ShihakushoArmorItem> BANKAI_LEGGINGS =
+            ITEMS.register("bankai_leggings", () -> new com.zangetsu.item.ShihakushoArmorItem(
+                    ModArmorMaterials.BANKAI_SHIHAKUSHO, net.minecraft.world.item.ArmorItem.Type.LEGGINGS, true));
+
+    public static final DeferredHolder<Item, com.zangetsu.item.ShihakushoArmorItem> BANKAI_BOOTS =
+            ITEMS.register("bankai_boots", () -> new com.zangetsu.item.ShihakushoArmorItem(
+                    ModArmorMaterials.BANKAI_SHIHAKUSHO, net.minecraft.world.item.ArmorItem.Type.BOOTS, true));
 }

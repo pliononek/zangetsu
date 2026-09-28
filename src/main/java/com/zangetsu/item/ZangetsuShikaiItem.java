@@ -164,7 +164,8 @@ public class ZangetsuShikaiItem extends SwordItem {
 
                 if (duration >= 20) {
                     // Fully charged monumental Getsuga Tenshō!
-                    if (reiatsu.consume(40.0f)) {
+                    float chargedCost = ShihakushoArmorItem.isWearingFullShikaiSet(player) ? 32.0f : 40.0f;
+                    if (reiatsu.consume(chargedCost)) {
                         GetsugaTenshoEntity getsuga = new GetsugaTenshoEntity(level, player, false, 1.0f, vertical);
                         level.addFreshEntity(getsuga);
 
@@ -182,18 +183,19 @@ public class ZangetsuShikaiItem extends SwordItem {
 
                         player.getCooldowns().addCooldown(this, 35);
                     } else {
-                        player.displayClientMessage(Component.literal("§cZa mało Reiatsu! (Wymagane 40)"), true);
+                        player.displayClientMessage(Component.literal("§cZa mało Reiatsu! (Wymagane " + (int)chargedCost + ")"), true);
                     }
                 } else if (duration >= 5) {
                     // Quick release: standard Getsuga
-                    if (reiatsu.consume(15.0f)) {
+                    float quickCost = ShihakushoArmorItem.isWearingFullShikaiSet(player) ? 12.0f : 15.0f;
+                    if (reiatsu.consume(quickCost)) {
                         GetsugaTenshoEntity getsuga = new GetsugaTenshoEntity(level, player, false, 0.0f, vertical);
                         level.addFreshEntity(getsuga);
 
                         level.playSound(null, player.blockPosition(), ModSounds.GETSUGA_TENSHO.get(), SoundSource.PLAYERS, 1.6f, 1.0f);
                         player.getCooldowns().addCooldown(this, 20);
                     } else {
-                        player.displayClientMessage(Component.literal("§cZa mało Reiatsu! (Wymagane 15)"), true);
+                        player.displayClientMessage(Component.literal("§cZa mało Reiatsu! (Wymagane " + (int)quickCost + ")"), true);
                     }
                 }
             }
@@ -218,6 +220,9 @@ public class ZangetsuShikaiItem extends SwordItem {
                         shikaiStack.get(net.minecraft.core.component.DataComponents.ENCHANTMENTS));
             }
             player.setItemInHand(player.getUsedItemHand(), bankaiStack);
+
+            // Auto-transform Shihakusho armor to Bankai
+            ShihakushoArmorItem.transformToBankai(player);
 
             // Audio: sub-bass Bankai drop & Reiatsu roar at max volume
             level.playSound(null, player.blockPosition(), ModSounds.BANKAI.get(), SoundSource.PLAYERS, 3.0f, 1.0f);

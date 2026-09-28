@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "WWW",
+    "W W",
+    "W W"
+  ],
+  "key": {
+    "W": {
+      "item": "minecraft:black_wool"
+    }
+  },
+  "result": {
+    "id": "zangetsu:shikai_leggings",
+    "count": 1
+  }
+}

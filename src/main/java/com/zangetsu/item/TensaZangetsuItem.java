@@ -242,6 +242,10 @@ public class TensaZangetsuItem extends SwordItem {
                         bankaiStack.get(net.minecraft.core.component.DataComponents.ENCHANTMENTS));
             }
             player.setItemInHand(player.getUsedItemHand(), shikaiStack);
+
+            // Revert Bankai armor to Shikai
+            ShihakushoArmorItem.revertToShikai(player);
+
             level.playSound(null, player.blockPosition(), ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 1.5f, 1.4f);
             player.displayClientMessage(Component.literal("§7Reverted to Zangetsu Shikai."), true);
         }

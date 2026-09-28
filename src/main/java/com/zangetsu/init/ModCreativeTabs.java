@@ -23,5 +23,11 @@ public class ModCreativeTabs {
                         output.accept(ModItems.ZANGETSU_SHIKAI.get());
                         output.accept(ModItems.HOLLOW_ZANGETSU.get());
                         output.accept(ModItems.TENSA_ZANGETSU.get());
+                        output.accept(ModItems.SHIKAI_CHESTPLATE.get());
+                        output.accept(ModItems.SHIKAI_LEGGINGS.get());
+                        output.accept(ModItems.SHIKAI_BOOTS.get());
+                        output.accept(ModItems.BANKAI_CHESTPLATE.get());
+                        output.accept(ModItems.BANKAI_LEGGINGS.get());
+                        output.accept(ModItems.BANKAI_BOOTS.get());
                     }).build());
 }

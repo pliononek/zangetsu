@@ -19,6 +19,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.Level;
@@ -217,6 +218,9 @@ public class GetsugaTenshoEntity extends Projectile {
             } else if (owner instanceof LivingEntity livingOwner) {
                 // Player OP Getsuga Tensho
                 damageSource = this.damageSources().indirectMagic(this, livingOwner);
+                if (livingOwner instanceof Player player && com.zangetsu.item.ShihakushoArmorItem.isWearingFullBankaiSet(player)) {
+                    damageToDeal *= 1.3f;
+                }
             } else {
                 damageSource = this.damageSources().magic();
             }

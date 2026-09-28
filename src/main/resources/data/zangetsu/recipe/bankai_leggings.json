@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " N ",
+    "OLO",
+    " O "
+  ],
+  "key": {
+    "N": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "O": {
+      "item": "minecraft:crying_obsidian"
+    },
+    "L": {
+      "item": "zangetsu:shikai_leggings"
+    }
+  },
+  "result": {
+    "id": "zangetsu:bankai_leggings",
+    "count": 1
+  }
+}

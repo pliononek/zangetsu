@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " N ",
+    "OCO",
+    " O "
+  ],
+  "key": {
+    "N": {
+      "item": "minecraft:netherite_ingot"
+    },
+    "O": {
+      "item": "minecraft:crying_obsidian"
+    },
+    "C": {
+      "item": "zangetsu:shikai_chestplate"
+    }
+  },
+  "result": {
+    "id": "zangetsu:bankai_chestplate",
+    "count": 1
+  }
+}

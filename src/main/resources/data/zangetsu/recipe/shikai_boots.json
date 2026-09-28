@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "W W",
+    "S S"
+  ],
+  "key": {
+    "W": {
+      "item": "minecraft:white_wool"
+    },
+    "S": {
+      "item": "minecraft:wheat"
+    }
+  },
+  "result": {
+    "id": "zangetsu:shikai_boots",
+    "count": 1
+  }
+}
