@@ -399,7 +399,11 @@ public class DomainExpansionEntity extends Entity {
                 double ry = p.getY() + level.random.nextDouble() * 12.0 - 2.0;
                 double rz = p.getZ() + (level.random.nextDouble() - 0.5) * 24.0;
 
-                if (new Vec3(rx, ry, rz).distanceTo(center) <= radius - 1.5) {
+                Vec3 rPos = new Vec3(rx, ry, rz);
+                if (rPos.distanceTo(p.getEyePosition()) < 2.0) {
+                    continue; // Never spawn particles right in front of player's face/eyes
+                }
+                if (rPos.distanceTo(center) <= radius - 1.5) {
                     if (level.random.nextBoolean()) {
                         level.sendParticles(new DustParticleOptions(crimson, 1.5f), rx, ry, rz, 1, 0, 0, 0, 0);
                     } else {
@@ -529,6 +533,11 @@ public class DomainExpansionEntity extends Entity {
                 double rx = clientPlayer.getX() + (level().random.nextDouble() - 0.5) * 22.0;
                 double ry = clientPlayer.getY() + level().random.nextDouble() * 10.0 - 2.0;
                 double rz = clientPlayer.getZ() + (level().random.nextDouble() - 0.5) * 22.0;
+
+                Vec3 rPos = new Vec3(rx, ry, rz);
+                if (rPos.distanceTo(clientPlayer.getEyePosition()) < 2.0) {
+                    continue; // Keep field of view clean
+                }
 
                 if (level().random.nextBoolean()) {
                     level().addParticle(new DustParticleOptions(crimson, 1.5f), rx, ry, rz, 0, 0, 0);

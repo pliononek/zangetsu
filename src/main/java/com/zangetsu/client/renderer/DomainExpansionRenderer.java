@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.zangetsu.ZangetsuMod;
 import com.zangetsu.entity.DomainExpansionEntity;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -55,6 +56,11 @@ public class DomainExpansionRenderer extends EntityRenderer<DomainExpansionEntit
 
     private void renderOwnerShadows(Player owner, DomainExpansionEntity entity, float partialTicks,
                                     PoseStack poseStack, MultiBufferSource buffer) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && mc.player.getUUID().equals(owner.getUUID()) && mc.options.getCameraType().isFirstPerson()) {
+            return; // In first-person, don't render back shadows to avoid blocking camera/view
+        }
+
         poseStack.pushPose();
 
         // Position relative to entity origin

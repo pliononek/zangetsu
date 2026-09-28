@@ -94,7 +94,7 @@ public class DomainExpansionItem extends Item {
 
     @Override
     public UseAnim getUseAnimation(ItemStack stack) {
-        return UseAnim.BOW;
+        return UseAnim.NONE;
     }
 
     @Override
@@ -103,23 +103,18 @@ public class DomainExpansionItem extends Item {
             int duration = this.getUseDuration(stack, entity) - count;
 
             if (level.isClientSide) {
-                // Swirling crimson & black particles around hands
-                Vec3 eye = player.getEyePosition();
-                Vec3 look = player.getLookAngle();
-                Vec3 handPos = eye.add(look.scale(0.8)).add(0, -0.2, 0);
+                // Ground-level spiritual pressure aura around feet (never blocking line of sight or face)
+                double angle = level.random.nextDouble() * Math.PI * 2.0;
+                double dist = 0.8 + level.random.nextDouble() * 0.9;
+                double px = player.getX() + Math.cos(angle) * dist;
+                double py = player.getY() + 0.05;
+                double pz = player.getZ() + Math.sin(angle) * dist;
 
-                Vector3f crimson = new Vector3f(0.95f, 0.05f, 0.15f);
+                Vector3f crimson = new Vector3f(0.85f, 0.05f, 0.15f);
                 Vector3f black = new Vector3f(0.01f, 0.01f, 0.01f);
 
-                for (int i = 0; i < 3; i++) {
-                    double ox = (level.random.nextDouble() - 0.5) * 0.8;
-                    double oy = (level.random.nextDouble() - 0.5) * 0.8;
-                    double oz = (level.random.nextDouble() - 0.5) * 0.8;
-                    level.addParticle(new DustParticleOptions(crimson, 1.8f),
-                            handPos.x + ox, handPos.y + oy, handPos.z + oz, -ox * 0.2, -oy * 0.2, -oz * 0.2);
-                    level.addParticle(new DustParticleOptions(black, 2.0f),
-                            handPos.x - ox, handPos.y - oy, handPos.z - oz, ox * 0.2, oy * 0.2, oz * 0.2);
-                }
+                level.addParticle(new DustParticleOptions(crimson, 1.0f), px, py, pz, 0, 0.02, 0);
+                level.addParticle(new DustParticleOptions(black, 1.0f), px, py, pz, 0, 0.02, 0);
             } else if (player instanceof ServerPlayer sp) {
                 ServerLevel serverLevel = sp.serverLevel();
                 player.getPersistentData().putInt("ZangetsuDomainChargeTicks", duration);
