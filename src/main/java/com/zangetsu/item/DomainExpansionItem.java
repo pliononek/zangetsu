@@ -35,7 +35,7 @@ import java.util.List;
 
 public class DomainExpansionItem extends Item {
     public static final float REIATSU_COST = 400.0f;
-    public static final int CHARGE_TICKS = 40; // 2 seconds
+    public static final int CHARGE_TICKS = 10; // 0.5 seconds
 
     public DomainExpansionItem() {
         super(new Item.Properties()
@@ -124,16 +124,16 @@ public class DomainExpansionItem extends Item {
                 float rem = Math.max(0.0f, (CHARGE_TICKS - duration) / 20.0f);
                 player.displayClientMessage(Component.literal("§4§l[ROZSZERZENIE DOMENY] §cZnak Dłoni... §e" + pct + "% §7(" + String.format("%.1f", rem) + "s)"), true);
 
-                if (duration == 20) {
-                    serverLevel.playSound(null, sp.blockPosition(), ModSounds.JINZEN_HEARTBEAT.get(), SoundSource.PLAYERS, 2.5f, 1.0f);
+                if (duration == 5) {
+                    serverLevel.playSound(null, sp.blockPosition(), ModSounds.JINZEN_HEARTBEAT.get(), SoundSource.PLAYERS, 2.5f, 1.2f);
                 }
 
-                if (duration % 4 == 0) {
-                    float intensity = 0.5f + (duration / (float) CHARGE_TICKS) * 2.5f;
-                    PacketDistributor.sendToPlayer(sp, new CameraShakePayload(6, intensity));
+                if (duration % 2 == 0) {
+                    float intensity = 0.8f + (duration / (float) CHARGE_TICKS) * 2.5f;
+                    PacketDistributor.sendToPlayer(sp, new CameraShakePayload(4, intensity));
                 }
 
-                // Complete 40 ticks: Unleash Kōten Zangetsu!
+                // Complete 10 ticks (0.5s): Unleash Kōten Zangetsu!
                 if (duration >= CHARGE_TICKS) {
                     player.stopUsingItem();
                     player.getPersistentData().remove("ZangetsuDomainCharging");
@@ -158,8 +158,8 @@ public class DomainExpansionItem extends Item {
                     DomainExpansionEntity domain = new DomainExpansionEntity(serverLevel, center, player);
                     serverLevel.addFreshEntity(domain);
 
-                    // Initial pulse sound & camera shake
-                    serverLevel.playSound(null, player.blockPosition(), ModSounds.BANKAI.get(), SoundSource.PLAYERS, 3.5f, 0.85f);
+                    // Voice line ("Ryōiki Tenkai... Tensa Zangetsu!") & camera shake
+                    serverLevel.playSound(null, player.blockPosition(), ModSounds.DOMAIN_EXPAND.get(), SoundSource.PLAYERS, 5.0f, 1.0f);
                     PacketDistributor.sendToPlayer(sp, new CameraShakePayload(20, 2.5f));
 
                     player.getCooldowns().addCooldown(this, 160); // 8 sec cooldown
@@ -197,7 +197,7 @@ public class DomainExpansionItem extends Item {
         tooltip.add(Component.literal("§4§l絶望を断つ月影 §7(Zetsubō o Tatsu Tsukikage)").withStyle(ChatFormatting.ITALIC));
         tooltip.add(Component.literal("§cKsiężycowy Horyzont Złamanego Przeznaczenia"));
         tooltip.add(Component.literal(""));
-        tooltip.add(Component.literal("§f[Przytrzymaj PPM] §eZnak Dłoni Tensa Zangetsu"));
+        tooltip.add(Component.literal("§f[Przytrzymaj PPM (0.5s)] §eZnak Dłoni Tensa Zangetsu"));
         tooltip.add(Component.literal("§7Rozszerza krystaliczną barierę o średnicy §c50 bloków§7 z przodu."));
         tooltip.add(Component.literal("§7Wymaga odblokowanego Bankai i §b400 Reiatsu§7."));
         tooltip.add(Component.literal(""));

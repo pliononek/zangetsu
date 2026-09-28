@@ -45,13 +45,7 @@
     "category": "player",
     "subtitle": "subtitles.zangetsu.domain_expand",
     "sounds": [
-      "zangetsu:bankai",
-      {
-        "name": "minecraft:block/glass/break1",
-        "type": "event",
-        "volume": 1.0,
-        "pitch": 0.8
-      }
+      "zangetsu:domain_expand"
     ]
   },
   "domain_shatter": {

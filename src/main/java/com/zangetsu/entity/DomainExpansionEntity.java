@@ -247,8 +247,10 @@ public class DomainExpansionEntity extends Entity {
         buildDomeLayer(level, h);
 
         // Sound & spiritual pressure resonance: rising pitch as dome closes
-        float pitch = 0.8f + (h / 50.0f) * 0.6f;
-        level.playSound(null, new BlockPos(cx, floorY + 1 + h, cz), ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 1.8f, pitch);
+        if (h % 5 == 0) {
+            float pitch = 0.8f + (h / 50.0f) * 0.6f;
+            level.playSound(null, new BlockPos(cx, floorY + 1 + h, cz), ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 0.7f, pitch);
+        }
 
         // Dust particle ring at currently expanding layer height
         Vector3f crimson = new Vector3f(0.95f, 0.05f, 0.15f);
@@ -270,8 +272,7 @@ public class DomainExpansionEntity extends Entity {
         if (tick == EXPANSION_DURATION) {
             buildDomeLayer(level, 50); // Seals apex completely
 
-            level.playSound(null, new BlockPos(cx, floorY + 51, cz), ModSounds.DOMAIN_EXPAND.get(), SoundSource.PLAYERS, 4.0f, 1.0f);
-            level.playSound(null, centerPos, ModSounds.BANKAI.get(), SoundSource.PLAYERS, 3.5f, 0.85f);
+            level.playSound(null, new BlockPos(cx, floorY + 51, cz), ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 3.5f, 0.6f);
             PacketDistributor.sendToPlayer(owner, new CameraShakePayload(50, 4.5f));
 
             owner.connection.send(new ClientboundSetTitlesAnimationPacket(10, 60, 20));
