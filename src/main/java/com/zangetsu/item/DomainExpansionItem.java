@@ -184,7 +184,7 @@ public class DomainExpansionItem extends Item {
         List<DomainExpansionEntity> domains = level.getEntitiesOfClass(DomainExpansionEntity.class, box);
         for (DomainExpansionEntity d : domains) {
             if (d.getOwnerUUID().isPresent() && d.getOwnerUUID().get().equals(player.getUUID())) {
-                if (player.position().distanceTo(d.position()) <= d.getRadius()) {
+                if (d.isInsideDomain(player.position())) {
                     return d;
                 }
             }

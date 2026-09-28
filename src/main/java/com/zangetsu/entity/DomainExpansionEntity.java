@@ -35,6 +35,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -53,10 +54,11 @@ public class DomainExpansionEntity extends Entity {
             SynchedEntityData.defineId(DomainExpansionEntity.class, EntityDataSerializers.OPTIONAL_UUID);
 
     public static final float DEFAULT_RADIUS = 25.0f; // 50 blocks diameter
+    public static final int MAX_HEIGHT = 50;
+    public static final int EXPANSION_DURATION = 50; // 50 layers, 1 layer per tick = 2.5s
     public static final int MAX_LIFETIME = 900; // 45 seconds
 
     private final Map<BlockPos, BlockState> capturedBlocks = new HashMap<>();
-    private final Set<BlockPos> currentBarrierBlocks = new HashSet<>();
     private int expansionTicks = 0;
     private int floorBaseY;
 
@@ -134,8 +136,20 @@ public class DomainExpansionEntity extends Entity {
 
     @Override
     public AABB getBoundingBoxForCulling() {
-        float r = getRadius() + 10.0f;
-        return new AABB(getX() - r, getY() - r, getZ() - r, getX() + r, getY() + r, getZ() + r);
+        return new AABB(getX() - 32.0, getY() - 15.0, getZ() - 32.0,
+                getX() + 32.0, getY() + 60.0, getZ() + 32.0);
+    }
+
+    public boolean isInsideDomain(Vec3 pos) {
+        Vec3 center = position();
+        double dx = pos.x - center.x;
+        double dz = pos.z - center.z;
+        double horizDist = Math.sqrt(dx * dx + dz * dz);
+        double dy = pos.y - center.y;
+        if (dy < -15.0 || dy > 55.0) return false;
+        double val = Math.max(0.0, 1.0 - Math.pow(Math.max(0.0, dy) / 50.0, 2));
+        double maxR = 25.0 * Math.sqrt(val);
+        return horizDist <= maxR + 1.5;
     }
 
     @Override
@@ -158,8 +172,8 @@ public class DomainExpansionEntity extends Entity {
             return;
         }
 
-        // Layered Spherical Expansion Phase (0 to 20 ticks = 1.0 second)
-        if (expansionTicks < 20) {
+        // Layer-by-Layer Dome Expansion (0 to 50 ticks = 2.5 seconds, 1 layer per tick)
+        if (expansionTicks < EXPANSION_DURATION) {
             expansionTicks++;
             handleExpansionTick(serverLevel, owner, expansionTicks);
             return;
@@ -174,8 +188,7 @@ public class DomainExpansionEntity extends Entity {
             return;
         }
 
-        double ownerDist = owner.position().distanceTo(center);
-        boolean ownerInside = ownerDist <= radius;
+        boolean ownerInside = isInsideDomain(owner.position());
 
         if (ownerInside) {
             owner.getPersistentData().putBoolean("ZangetsuInDomain", true);
@@ -207,22 +220,45 @@ public class DomainExpansionEntity extends Entity {
     }
 
     private void handleExpansionTick(ServerLevel level, ServerPlayer owner, int tick) {
-        // 5-stage expanding spherical wave from center outward
-        if (tick == 1) {
-            expandStep(level, owner, 0.0, 7.0, false);
-        } else if (tick == 5) {
-            expandStep(level, owner, 7.0, 13.0, false);
-        } else if (tick == 10) {
-            expandStep(level, owner, 13.0, 18.0, false);
-        } else if (tick == 15) {
-            expandStep(level, owner, 18.0, 22.0, false);
-        } else if (tick == 20) {
-            // Final stage: locks in full 50-block diameter crystalline barrier!
-            expandStep(level, owner, 22.0, 25.0, true);
+        BlockPos centerPos = blockPosition();
+        int cx = centerPos.getX();
+        int cz = centerPos.getZ();
 
-            // Grand domain activation sound & title
-            level.playSound(null, blockPosition(), ModSounds.DOMAIN_EXPAND.get(), SoundSource.PLAYERS, 4.0f, 1.0f);
-            level.playSound(null, blockPosition(), ModSounds.BANKAI.get(), SoundSource.PLAYERS, 3.5f, 0.85f);
+        // Tick 1: Initialize 100% black concrete floor across domain radius & set up invisible lighting
+        if (tick == 1) {
+            initFloor(level, cx, cz, floorBaseY);
+        }
+
+        // Build dome layer by layer from ground (h=0) to top (h=50)
+        int h = tick - 1; // 0 to 49
+        buildDomeLayer(level, h);
+
+        // Sound & spiritual pressure resonance: rising pitch as dome closes
+        float pitch = 0.8f + (h / 50.0f) * 0.6f;
+        level.playSound(null, centerPos.offset(0, h, 0), ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 1.8f, pitch);
+
+        // Dust particle ring at currently expanding layer height
+        Vector3f crimson = new Vector3f(0.95f, 0.05f, 0.15f);
+        double val = Math.max(0.0, 1.0 - Math.pow(h / 50.0, 2));
+        double r = 25.0 * Math.sqrt(val);
+        int ringPoints = Math.max(8, (int) (r * 2.5));
+        for (int p = 0; p < ringPoints; p++) {
+            double theta = (p * 2.0 * Math.PI) / ringPoints;
+            double px = cx + Math.cos(theta) * r;
+            double pz = cz + Math.sin(theta) * r;
+            level.sendParticles(new DustParticleOptions(crimson, 1.5f),
+                    px, centerPos.getY() + h + 0.5, pz, 1, 0, 0, 0, 0);
+        }
+
+        // Subtle camera shake on each layer
+        PacketDistributor.sendToPlayer(owner, new CameraShakePayload(4, 1.0f + (h / 50.0f) * 1.5f));
+
+        // Tick 50: Final Apex Seal!
+        if (tick == EXPANSION_DURATION) {
+            buildDomeLayer(level, 50); // Seals apex completely
+
+            level.playSound(null, centerPos.offset(0, 50, 0), ModSounds.DOMAIN_EXPAND.get(), SoundSource.PLAYERS, 4.0f, 1.0f);
+            level.playSound(null, centerPos, ModSounds.BANKAI.get(), SoundSource.PLAYERS, 3.5f, 0.85f);
             PacketDistributor.sendToPlayer(owner, new CameraShakePayload(50, 4.5f));
 
             owner.connection.send(new ClientboundSetTitlesAnimationPacket(10, 60, 20));
@@ -231,99 +267,98 @@ public class DomainExpansionEntity extends Entity {
         }
     }
 
-    private void expandStep(ServerLevel level, ServerPlayer owner, double rFrom, double rTo, boolean isFinal) {
-        BlockPos centerPos = blockPosition();
-        int cx = centerPos.getX();
-        int cz = centerPos.getZ();
+    private void initFloor(ServerLevel level, int cx, int cz, int baseY) {
+        int r = (int) Math.ceil(DEFAULT_RADIUS);
+        BlockState blackConcrete = Blocks.BLACK_CONCRETE.defaultBlockState();
+        BlockState lightState = Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15);
 
-        // 1. Convert Floor to Pure Black Concrete and place Invisible Light Blocks inside current radius
-        int irTo = (int) Math.ceil(rTo);
-        for (int x = -irTo; x <= irTo; x++) {
-            for (int z = -irTo; z <= irTo; z++) {
-                double d = Math.sqrt(x * x + z * z);
-                if (d > rFrom && d <= rTo) {
-                    BlockPos floorPos = findFloorPos(level, cx + x, cz + z, floorBaseY);
-                    setDomainBlock(level, floorPos, Blocks.BLACK_CONCRETE.defaultBlockState());
+        for (int x = -r; x <= r; x++) {
+            for (int z = -r; z <= r; z++) {
+                if (x * x + z * z <= r * r) {
+                    int wx = cx + x;
+                    int wz = cz + z;
+                    BlockPos floorPos = findSurfacePos(level, wx, wz, baseY);
+                    setDomainBlock(level, floorPos, blackConcrete);
 
-                    // Clear non-solid foliage/grass above the black floor
+                    // Clear non-solid foliage/weeds/flowers/grass directly above the black concrete floor
                     BlockPos above = floorPos.above();
                     BlockState aboveState = level.getBlockState(above);
-                    if (!aboveState.isAir() && (!aboveState.isSolid() || aboveState.is(BlockTags.FLOWERS))) {
-                        setDomainBlock(level, above, Blocks.AIR.defaultBlockState());
+                    if (!aboveState.isAir() && !aboveState.is(ModBlocks.DOMAIN_BARRIER.get()) && !aboveState.is(Blocks.BLACK_CONCRETE)) {
+                        if (!aboveState.isSolid() || aboveState.is(BlockTags.FLOWERS) || aboveState.is(BlockTags.REPLACEABLE)) {
+                            setDomainBlock(level, above, Blocks.AIR.defaultBlockState());
+                        }
                     }
 
-                    // Place invisible light blocks every 6 blocks to brightly illuminate the entire interior
-                    if (x % 6 == 0 && z % 6 == 0) {
-                        BlockState lightState = Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15);
+                    // Place invisible light blocks on a grid of every 5 blocks to brightly illuminate the interior
+                    if (x % 5 == 0 && z % 5 == 0) {
                         setDomainBlock(level, floorPos.above(3), lightState);
-                        setDomainBlock(level, floorPos.above(7), lightState);
+                        setDomainBlock(level, floorPos.above(8), lightState);
                     }
                 }
             }
         }
+    }
 
-        // 2. Clear previous temporary barrier blocks that are now strictly inside
-        Set<BlockPos> nextBarrierBlocks = new HashSet<>();
+    private void buildDomeLayer(ServerLevel level, int h) {
+        BlockPos centerPos = blockPosition();
+        int cx = centerPos.getX();
+        int cz = centerPos.getZ();
+        int cy = centerPos.getY() + h;
         BlockState barrierState = ModBlocks.DOMAIN_BARRIER.get().defaultBlockState();
 
-        // Calculate shell at rTo
-        double rMinSq = (rTo - 0.75) * (rTo - 0.75);
-        double rMaxSq = (rTo + 0.6) * (rTo + 0.6);
+        if (h >= 50) {
+            // Apex cap - fill solid disk at the top (radius 2)
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    if (x * x + z * z <= 6) {
+                        setDomainBlock(level, new BlockPos(cx + x, cy, cz + z), barrierState);
+                    }
+                }
+            }
+            return;
+        }
 
-        for (int x = -irTo; x <= irTo; x++) {
-            for (int y = -irTo; y <= irTo; y++) {
-                for (int z = -irTo; z <= irTo; z++) {
-                    double d2 = x * x + y * y + z * z;
-                    if (d2 >= rMinSq && d2 <= rMaxSq) {
-                        BlockPos bpos = centerPos.offset(x, y, z);
-                        if (bpos.getY() > floorBaseY) {
-                            setDomainBlock(level, bpos, barrierState);
-                            nextBarrierBlocks.add(bpos);
+        double val = Math.max(0.0, 1.0 - Math.pow(h / 50.0, 2));
+        double r = 25.0 * Math.sqrt(val);
+        int ir = (int) Math.ceil(r + 1.0);
+
+        for (int x = -ir; x <= ir; x++) {
+            for (int z = -ir; z <= ir; z++) {
+                double d = Math.sqrt(x * x + z * z);
+                if (d >= (r - 0.8) && d <= (r + 0.7)) {
+                    BlockPos bpos = new BlockPos(cx + x, cy, cz + z);
+                    setDomainBlock(level, bpos, barrierState);
+
+                    // If base layer (h == 0), firmly anchor down into terrain so no gaps underneath!
+                    if (h == 0) {
+                        int terrainY = findSurfacePos(level, cx + x, cz + z, centerPos.getY()).getY();
+                        int minY = Math.min(centerPos.getY() - 1, terrainY - 1);
+                        for (int yDown = centerPos.getY() - 1; yDown >= minY; yDown--) {
+                            setDomainBlock(level, new BlockPos(cx + x, yDown, cz + z), barrierState);
                         }
                     }
                 }
             }
         }
-
-        // Remove intermediate temporary barrier blocks from previous stage that are not on the new perimeter
-        for (BlockPos prevPos : currentBarrierBlocks) {
-            if (!nextBarrierBlocks.contains(prevPos) && level.getBlockState(prevPos).is(ModBlocks.DOMAIN_BARRIER.get())) {
-                if (prevPos.getY() > floorBaseY) {
-                    setDomainBlock(level, prevPos, Blocks.AIR.defaultBlockState());
-                }
-            }
-        }
-
-        currentBarrierBlocks.clear();
-        currentBarrierBlocks.addAll(nextBarrierBlocks);
-
-        // 3. Audio & Expanding Wave Particles
-        float pitch = 0.8f + (float) (rTo / 25.0) * 0.5f;
-        level.playSound(null, centerPos, ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 2.2f, pitch);
-
-        Vector3f crimson = new Vector3f(0.95f, 0.05f, 0.15f);
-        int ringPoints = (int) (rTo * 5);
-        for (int p = 0; p < ringPoints; p++) {
-            double theta = (p * 2.0 * Math.PI) / ringPoints;
-            double px = cx + Math.cos(theta) * rTo;
-            double pz = cz + Math.sin(theta) * rTo;
-            level.sendParticles(new DustParticleOptions(crimson, 1.8f),
-                    px, floorBaseY + 0.3, pz, 1, 0, 0.08, 0, 0.02);
-        }
-
-        PacketDistributor.sendToPlayer(owner, new CameraShakePayload(6, 1.2f));
     }
 
-    private BlockPos findFloorPos(ServerLevel level, int x, int z, int baseFloorY) {
-        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos(x, baseFloorY + 6, z);
-        for (int y = baseFloorY + 6; y >= baseFloorY - 7; y--) {
+    private BlockPos findSurfacePos(ServerLevel level, int worldX, int worldZ, int referenceY) {
+        int hmY = level.getHeight(Heightmap.Types.MOTION_BLOCKING, worldX, worldZ) - 1;
+        if (Math.abs(hmY - referenceY) <= 30) {
+            return new BlockPos(worldX, hmY, worldZ);
+        }
+
+        // Raycast down from referenceY + 15
+        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos(worldX, referenceY + 15, worldZ);
+        for (int y = referenceY + 15; y >= referenceY - 35; y--) {
             mpos.setY(y);
-            BlockState state = level.getBlockState(mpos);
-            if (!state.isAir() && state.isSolid() && !state.is(ModBlocks.DOMAIN_BARRIER.get())) {
+            BlockState st = level.getBlockState(mpos);
+            if (!st.isAir() && !st.is(ModBlocks.DOMAIN_BARRIER.get())) {
                 return mpos.immutable();
             }
         }
-        return new BlockPos(x, baseFloorY, z);
+
+        return new BlockPos(worldX, hmY, worldZ);
     }
 
     private void setDomainBlock(ServerLevel level, BlockPos pos, BlockState newState) {
@@ -342,20 +377,19 @@ public class DomainExpansionEntity extends Entity {
             level.setBlock(entry.getKey(), entry.getValue(), 2);
         }
         capturedBlocks.clear();
-        currentBarrierBlocks.clear();
     }
 
     private void executeSureHit(ServerLevel level, Vec3 center, float radius, ServerPlayer owner) {
         AABB hitBox = new AABB(
-                center.x - radius, center.y - radius, center.z - radius,
-                center.x + radius, center.y + radius, center.z + radius
+                center.x - 26.0, center.y - 15.0, center.z - 26.0,
+                center.x + 26.0, center.y + 55.0, center.z + 26.0
         );
 
         List<LivingEntity> targets = level.getEntitiesOfClass(LivingEntity.class, hitBox, target -> {
             if (target == owner) return false;
             if (target.isAlliedTo(owner)) return false;
             if (target instanceof Player p && (p.isCreative() || p.isSpectator())) return false;
-            return target.position().distanceTo(center) <= radius - 1.5;
+            return isInsideDomain(target.position());
         });
 
         Vector3f crimson = new Vector3f(0.85f, 0.05f, 0.15f);
@@ -388,11 +422,11 @@ public class DomainExpansionEntity extends Entity {
         Vector3f black = new Vector3f(0.02f, 0.02f, 0.02f);
 
         AABB insideBox = new AABB(
-                center.x - radius, center.y - radius, center.z - radius,
-                center.x + radius, center.y + radius, center.z + radius
+                center.x - 26.0, center.y - 15.0, center.z - 26.0,
+                center.x + 26.0, center.y + 55.0, center.z + 26.0
         );
 
-        List<Player> playersInside = level.getEntitiesOfClass(Player.class, insideBox, p -> p.position().distanceTo(center) <= radius);
+        List<Player> playersInside = level.getEntitiesOfClass(Player.class, insideBox, p -> isInsideDomain(p.position()));
         for (Player p : playersInside) {
             for (int i = 0; i < 5; i++) {
                 double rx = p.getX() + (level.random.nextDouble() - 0.5) * 24.0;
@@ -403,7 +437,7 @@ public class DomainExpansionEntity extends Entity {
                 if (rPos.distanceTo(p.getEyePosition()) < 2.0) {
                     continue; // Never spawn particles right in front of player's face/eyes
                 }
-                if (rPos.distanceTo(center) <= radius - 1.5) {
+                if (isInsideDomain(rPos)) {
                     if (level.random.nextBoolean()) {
                         level.sendParticles(new DustParticleOptions(crimson, 1.5f), rx, ry, rz, 1, 0, 0, 0, 0);
                     } else {
@@ -525,7 +559,7 @@ public class DomainExpansionEntity extends Entity {
 
     private void tickClient(Vec3 center, float radius) {
         Player clientPlayer = net.minecraft.client.Minecraft.getInstance().player;
-        if (clientPlayer != null && clientPlayer.position().distanceTo(center) <= radius) {
+        if (clientPlayer != null && isInsideDomain(clientPlayer.position())) {
             Vector3f crimson = new Vector3f(0.85f, 0.05f, 0.15f);
             Vector3f black = new Vector3f(0.01f, 0.01f, 0.01f);
 
@@ -539,10 +573,12 @@ public class DomainExpansionEntity extends Entity {
                     continue; // Keep field of view clean
                 }
 
-                if (level().random.nextBoolean()) {
-                    level().addParticle(new DustParticleOptions(crimson, 1.5f), rx, ry, rz, 0, 0, 0);
-                } else {
-                    level().addParticle(new DustParticleOptions(black, 1.7f), rx, ry, rz, 0, 0, 0);
+                if (isInsideDomain(rPos)) {
+                    if (level().random.nextBoolean()) {
+                        level().addParticle(new DustParticleOptions(crimson, 1.5f), rx, ry, rz, 0, 0, 0);
+                    } else {
+                        level().addParticle(new DustParticleOptions(black, 1.7f), rx, ry, rz, 0, 0, 0);
+                    }
                 }
             }
         }

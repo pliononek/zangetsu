@@ -44,8 +44,7 @@ public class DomainExpansionRenderer extends EntityRenderer<DomainExpansionEntit
         if (ownerUUID.isPresent()) {
             Player owner = entity.level().getPlayerByUUID(ownerUUID.get());
             if (owner != null && owner.isAlive()) {
-                double ownerDist = owner.position().distanceTo(entity.position());
-                if (ownerDist <= entity.getRadius()) {
+                if (entity.isInsideDomain(owner.position())) {
                     renderOwnerShadows(owner, entity, partialTicks, poseStack, buffer);
                 }
             }
