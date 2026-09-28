@@ -31,18 +31,23 @@ public record ShunpoKeyPayload() implements CustomPacketPayload {
                 ItemStack mainHand = player.getMainHandItem();
                 boolean isBankai = mainHand.is(ModItems.TENSA_ZANGETSU.get());
                 boolean isShikai = mainHand.is(ModItems.ZANGETSU_SHIKAI.get());
+                boolean isDomainItem = mainHand.is(ModItems.DOMAIN_EXPANSION.get());
+                boolean inDomain = player.getPersistentData().getBoolean("ZangetsuInDomain");
 
-                if (isBankai || isShikai) {
+                if (isBankai || isShikai || (isDomainItem && inDomain)) {
                     ReiatsuData data = player.getData(ModDataAttachments.REIATSU);
-                    float cost;
-                    if (isBankai) {
-                        cost = com.zangetsu.item.ShihakushoArmorItem.isWearingFullBankaiSet(player) ? 5.0f : 10.0f;
-                    } else {
-                        cost = com.zangetsu.item.ShihakushoArmorItem.isWearingFullShikaiSet(player) ? 8.0f : 12.0f;
+                    float cost = 0.0f;
+
+                    if (!inDomain) {
+                        if (isBankai) {
+                            cost = com.zangetsu.item.ShihakushoArmorItem.isWearingFullBankaiSet(player) ? 5.0f : 10.0f;
+                        } else {
+                            cost = com.zangetsu.item.ShihakushoArmorItem.isWearingFullShikaiSet(player) ? 8.0f : 12.0f;
+                        }
                     }
 
-                    if (data.consume(cost)) {
-                        TensaZangetsuItem.performShunpo(player, isBankai);
+                    if (inDomain || data.consume(cost)) {
+                        TensaZangetsuItem.performShunpo(player, isBankai || inDomain);
                     } else {
                         player.displayClientMessage(Component.literal("§cNot enough Reiatsu for Shunpo! (Requires " + (int)cost + ")"), true);
                     }

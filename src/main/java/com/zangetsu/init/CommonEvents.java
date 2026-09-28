@@ -12,6 +12,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -184,6 +185,12 @@ public class CommonEvents {
                     // Safe death in Inner World - preserve items and return to carpets
                     event.setCanceled(true);
                     InnerWorldManager.returnFromInnerWorld(player, false);
+                } else if (player.getPersistentData().contains("ZangetsuDomainId")) {
+                    int id = (int) player.getPersistentData().getLong("ZangetsuDomainId");
+                    Entity e = player.serverLevel().getEntity(id);
+                    if (e instanceof com.zangetsu.entity.DomainExpansionEntity domain) {
+                        domain.shatter();
+                    }
                 }
             }
         }

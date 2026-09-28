@@ -23,6 +23,9 @@ public class ModItems {
     public static final DeferredHolder<Item, TensaZangetsuItem> TENSA_ZANGETSU =
             ITEMS.register("tensa_zangetsu", TensaZangetsuItem::new);
 
+    public static final DeferredHolder<Item, com.zangetsu.item.DomainExpansionItem> DOMAIN_EXPANSION =
+            ITEMS.register("domain_expansion", com.zangetsu.item.DomainExpansionItem::new);
+
     public static final DeferredHolder<Item, SwordItem> HOLLOW_ZANGETSU =
             ITEMS.register("hollow_zangetsu", () -> new SwordItem(Tiers.NETHERITE, new Item.Properties()
                     .attributes(SwordItem.createAttributes(Tiers.NETHERITE, 3, -2.2f))

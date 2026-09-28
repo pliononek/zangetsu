@@ -206,10 +206,31 @@ public class TensaZangetsuItem extends SwordItem {
     public static void performShunpo(Player player, boolean isBankai) {
         Level level = player.level();
         Vec3 look = player.getLookAngle();
-        double maxDistance = isBankai ? 14.0 : 12.0;
+        boolean inDomain = player.getPersistentData().getBoolean("ZangetsuInDomain");
+        double maxDistance = inDomain ? 26.0 : (isBankai ? 14.0 : 12.0);
 
         Vec3 start = player.getEyePosition();
         Vec3 end = start.add(look.scale(maxDistance));
+
+        // Fate Severance: In Domain, auto-teleport behind targeted enemy's back!
+        if (inDomain) {
+            net.minecraft.world.phys.AABB targetBox = player.getBoundingBox().expandTowards(look.scale(maxDistance)).inflate(3.0);
+            java.util.List<LivingEntity> enemies = level.getEntitiesOfClass(LivingEntity.class, targetBox, e -> e != player && !e.isAlliedTo(player));
+            LivingEntity bestTarget = null;
+            double bestDot = 0.82;
+            for (LivingEntity e : enemies) {
+                Vec3 toE = e.getEyePosition().subtract(start).normalize();
+                double dot = look.dot(toE);
+                if (dot > bestDot) {
+                    bestDot = dot;
+                    bestTarget = e;
+                }
+            }
+            if (bestTarget != null) {
+                Vec3 enemyLook = bestTarget.getLookAngle();
+                end = bestTarget.position().subtract(enemyLook.scale(1.4));
+            }
+        }
 
         BlockHitResult hit = level.clip(new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
         Vec3 dest = hit.getType() == HitResult.Type.MISS ? end : hit.getLocation().subtract(look.scale(0.5));

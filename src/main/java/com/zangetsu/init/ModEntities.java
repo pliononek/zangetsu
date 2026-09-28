@@ -27,4 +27,11 @@ public class ModEntities {
                     .clientTrackingRange(64)
                     .updateInterval(1)
                     .build(ResourceLocation.fromNamespaceAndPath(ZangetsuMod.MODID, "inner_zangetsu").toString()));
+
+    public static final DeferredHolder<EntityType<?>, EntityType<com.zangetsu.entity.DomainExpansionEntity>> DOMAIN_EXPANSION =
+            ENTITIES.register("domain_expansion", () -> EntityType.Builder.<com.zangetsu.entity.DomainExpansionEntity>of(com.zangetsu.entity.DomainExpansionEntity::new, MobCategory.MISC)
+                    .sized(1.0f, 1.0f)
+                    .clientTrackingRange(256)
+                    .updateInterval(1)
+                    .build(ResourceLocation.fromNamespaceAndPath(ZangetsuMod.MODID, "domain_expansion").toString()));
 }

@@ -39,4 +39,24 @@ public class ModSounds {
             "inner_laugh",
             () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(ZangetsuMod.MODID, "inner_laugh"))
     );
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> DOMAIN_EXPAND = SOUNDS.register(
+            "domain_expand",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(ZangetsuMod.MODID, "domain_expand"))
+    );
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> DOMAIN_SHATTER = SOUNDS.register(
+            "domain_shatter",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(ZangetsuMod.MODID, "domain_shatter"))
+    );
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> KUROI_TSUKI = SOUNDS.register(
+            "kuroi_tsuki",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(ZangetsuMod.MODID, "kuroi_tsuki"))
+    );
+
+    public static final DeferredHolder<SoundEvent, SoundEvent> GRAN_REY_GETSUGA = SOUNDS.register(
+            "gran_rey_getsuga",
+            () -> SoundEvent.createVariableRangeEvent(ResourceLocation.fromNamespaceAndPath(ZangetsuMod.MODID, "gran_rey_getsuga"))
+    );
 }

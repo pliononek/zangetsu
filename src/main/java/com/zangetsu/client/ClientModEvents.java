@@ -45,6 +45,7 @@ public class ClientModEvents {
         public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
             event.registerEntityRenderer(ModEntities.GETSUGA_TENSHO.get(), GetsugaTenshoRenderer::new);
             event.registerEntityRenderer(ModEntities.INNER_ZANGETSU.get(), InnerZangetsuRenderer::new);
+            event.registerEntityRenderer(ModEntities.DOMAIN_EXPANSION.get(), com.zangetsu.client.renderer.DomainExpansionRenderer::new);
         }
 
         @SubscribeEvent
@@ -182,18 +183,38 @@ public class ClientModEvents {
 
                 model.rightLeg.xRot = 0.0f;
                 model.leftLeg.xRot = 0.0f;
+            } else if (player.getPersistentData().getBoolean("ZangetsuDomainCharging")) {
+                PlayerModel<?> model = event.getRenderer().getModel();
+                // Crossed arms forming Tensa Zangetsu Manji Hand Seal!
+                model.rightArm.xRot = -0.85f;
+                model.rightArm.yRot = -0.55f;
+                model.rightArm.zRot = 0.45f;
+
+                model.leftArm.xRot = -0.85f;
+                model.leftArm.yRot = 0.55f;
+                model.leftArm.zRot = -0.45f;
+
+                model.head.xRot = 0.25f; // Focused downward on the seal
             }
         }
 
         @SubscribeEvent
         public static void onRenderHand(RenderHandEvent event) {
             Minecraft mc = Minecraft.getInstance();
-            if (mc.player != null && mc.player.getPersistentData().getBoolean("ZangetsuBankaiCharging")) {
-                // Intense spiritual pressure vibration in 1st person
-                float age = mc.player.tickCount + event.getPartialTick();
-                float jitterX = (float) Math.sin(age * 4.2) * 0.007f;
-                float jitterY = (float) Math.cos(age * 5.1) * 0.007f;
-                event.getPoseStack().translate(jitterX, jitterY, 0);
+            if (mc.player != null) {
+                if (mc.player.getPersistentData().getBoolean("ZangetsuBankaiCharging")) {
+                    // Intense spiritual pressure vibration in 1st person
+                    float age = mc.player.tickCount + event.getPartialTick();
+                    float jitterX = (float) Math.sin(age * 4.2) * 0.007f;
+                    float jitterY = (float) Math.cos(age * 5.1) * 0.007f;
+                    event.getPoseStack().translate(jitterX, jitterY, 0);
+                } else if (mc.player.getPersistentData().getBoolean("ZangetsuDomainCharging")) {
+                    // Spiritual hand seal resonance
+                    float age = mc.player.tickCount + event.getPartialTick();
+                    float jitterX = (float) Math.sin(age * 6.5) * 0.009f;
+                    float jitterY = (float) Math.cos(age * 7.2) * 0.009f;
+                    event.getPoseStack().translate(jitterX, jitterY, -0.05f);
+                }
             }
         }
 

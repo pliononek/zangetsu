@@ -40,5 +40,61 @@
     "sounds": [
       "zangetsu:inner_laugh"
     ]
+  },
+  "domain_expand": {
+    "category": "player",
+    "subtitle": "subtitles.zangetsu.domain_expand",
+    "sounds": [
+      "zangetsu:bankai",
+      {
+        "name": "minecraft:block/glass/break1",
+        "type": "event",
+        "volume": 1.0,
+        "pitch": 0.8
+      }
+    ]
+  },
+  "domain_shatter": {
+    "category": "player",
+    "subtitle": "subtitles.zangetsu.domain_shatter",
+    "sounds": [
+      {
+        "name": "minecraft:block/glass/break1",
+        "type": "event",
+        "volume": 2.0,
+        "pitch": 0.5
+      },
+      {
+        "name": "minecraft:random/explode1",
+        "type": "event",
+        "volume": 1.8,
+        "pitch": 0.7
+      }
+    ]
+  },
+  "kuroi_tsuki": {
+    "category": "player",
+    "subtitle": "subtitles.zangetsu.kuroi_tsuki",
+    "sounds": [
+      {
+        "name": "minecraft:item/trident/throw1",
+        "type": "event",
+        "volume": 1.2,
+        "pitch": 1.3
+      }
+    ]
+  },
+  "gran_rey_getsuga": {
+    "category": "player",
+    "subtitle": "subtitles.zangetsu.gran_rey_getsuga",
+    "sounds": [
+      "zangetsu:getsuga_tensho",
+      {
+        "name": "minecraft:random/explode4",
+        "type": "event",
+        "volume": 2.0,
+        "pitch": 0.8
+      }
+    ]
   }
 }
