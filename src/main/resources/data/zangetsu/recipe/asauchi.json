@@ -1,19 +1,20 @@
 {
   "type": "minecraft:crafting_shaped",
+  "category": "equipment",
   "pattern": [
-    " N ",
+    " D ",
     " S ",
-    " E "
+    " B "
   ],
   "key": {
-    "N": {
-      "item": "minecraft:nether_star"
+    "D": {
+      "item": "minecraft:diamond"
     },
     "S": {
-      "item": "minecraft:netherite_sword"
+      "item": "minecraft:iron_sword"
     },
-    "E": {
-      "item": "minecraft:echo_shard"
+    "B": {
+      "tag": "minecraft:soul_fire_base_blocks"
     }
   },
   "result": {
