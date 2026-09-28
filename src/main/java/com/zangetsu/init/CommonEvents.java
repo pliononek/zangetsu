@@ -204,6 +204,12 @@ public class CommonEvents {
         public static void onExplosionDetonate(net.neoforged.neoforge.event.level.ExplosionEvent.Detonate event) {
             net.minecraft.world.level.Level level = event.getLevel();
             if (!level.isClientSide()) {
+                if (event.getExplosion().getDirectSourceEntity() instanceof com.zangetsu.entity.GetsugaTenshoEntity) {
+                    if (!ModGameRules.isGetsugaDestructionAllowed(level)) {
+                        event.getAffectedBlocks().clear();
+                        return;
+                    }
+                }
                 event.getAffectedBlocks().removeIf(pos -> com.zangetsu.entity.DomainExpansionEntity.isProtectedFromDestruction(level, pos));
             }
         }

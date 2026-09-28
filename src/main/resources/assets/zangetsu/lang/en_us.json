@@ -38,5 +38,11 @@
   "message.zangetsu.trial_failed": "§cYour spirit was overwhelmed... Return to your body and train further.",
   "message.zangetsu.trial_start": "§f[Inner Zangetsu] §c\"Let's see who is the horse and who is the king!\"",
   "message.zangetsu.trial_victory": "§f[Inner Zangetsu] §a\"Heh... not bad. I recognize you as my master. Take it... ZANGETSU!\"",
-  "message.zangetsu.wrong_place": "§7The spiritual pressure here is too calm. Perform the ritual in the Nether's Soul Sand Valley."
+  "message.zangetsu.wrong_place": "§7The spiritual pressure here is too calm. Perform the ritual in the Nether's Soul Sand Valley.",
+  "gamerule.getsugaDestruction": "Getsuga Tenshō Block Destruction",
+  "gamerule.getsugaDestruction.description": "Controls whether Getsuga Tenshō cuts and explodes blocks in the world.",
+  "gamerule.getsugadestruction": "Getsuga Tenshō Block Destruction",
+  "gamerule.getsugadestruction.description": "Controls whether Getsuga Tenshō cuts and explodes blocks in the world.",
+  "gamerule.zangetsuGriefing": "Zangetsu Block Destruction",
+  "gamerule.zangetsuGriefing.description": "Controls whether Zangetsu abilities cut and explode blocks in the world."
 }

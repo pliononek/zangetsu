@@ -241,8 +241,8 @@ public class GetsugaTenshoEntity extends Projectile {
             }
         }
 
-        // Terrain carving if enabled (strictly disabled for boss Getsuga Tensho!)
-        boolean allowGriefing = !isBossGetsuga() && this.level().getGameRules().getBoolean(ModGameRules.RULE_ZANGETSU_GRIEFING);
+        // Terrain carving if enabled (strictly disabled for boss Getsuga Tensho or if gamerule is false!)
+        boolean allowGriefing = !isBossGetsuga() && ModGameRules.isGetsugaDestructionAllowed(this.level());
         if (allowGriefing && this.level() instanceof ServerLevel serverLevel) {
             carveTerrain(serverLevel);
         }
@@ -317,7 +317,7 @@ public class GetsugaTenshoEntity extends Projectile {
 
     private void detonate() {
         boolean inDomain = DomainExpansionEntity.isInsideAnyDomain(this.level(), this.position());
-        boolean allowGriefing = !isBossGetsuga() && !inDomain && this.level().getGameRules().getBoolean(ModGameRules.RULE_ZANGETSU_GRIEFING);
+        boolean allowGriefing = !isBossGetsuga() && !inDomain && ModGameRules.isGetsugaDestructionAllowed(this.level());
         Level.ExplosionInteraction interaction = allowGriefing ? Level.ExplosionInteraction.MOB : Level.ExplosionInteraction.NONE;
         this.level().explode(this, this.getX(), this.getY(), this.getZ(), 3.0f + getCharge() * 4.0f, interaction);
 

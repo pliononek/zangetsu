@@ -38,5 +38,11 @@
   "message.zangetsu.trial_failed": "§cTwój duch uległ... Wróć do ciała i trenuj dalej.",
   "message.zangetsu.trial_start": "§f[Wewnętrzny Zangetsu] §c\"Zobaczmy, kto tu jest koniem, a kto królem!\"",
   "message.zangetsu.trial_victory": "§f[Wewnętrzny Zangetsu] §a\"Heh... nieźle. Uznaję cię za mojego pana. Bierz to... ZANGETSU!\"",
-  "message.zangetsu.wrong_place": "§7Ciśnienie duchowe jest tutaj zbyt spokojne."
+  "message.zangetsu.wrong_place": "§7Ciśnienie duchowe jest tutaj zbyt spokojne.",
+  "gamerule.getsugaDestruction": "Niszczenie bloków przez Getsuga Tenshō",
+  "gamerule.getsugaDestruction.description": "Określa, czy cięcia i wybuchy Getsuga Tenshō niszczą bloki w świecie.",
+  "gamerule.getsugadestruction": "Niszczenie bloków przez Getsuga Tenshō",
+  "gamerule.getsugadestruction.description": "Określa, czy cięcia i wybuchy Getsuga Tenshō niszczą bloki w świecie.",
+  "gamerule.zangetsuGriefing": "Niszczenie bloków przez Zangetsu",
+  "gamerule.zangetsuGriefing.description": "Określa, czy umiejętności Zangetsu niszczą bloki w świecie."
 }
