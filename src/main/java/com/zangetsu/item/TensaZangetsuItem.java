@@ -139,6 +139,28 @@ public class TensaZangetsuItem extends SwordItem {
                 // Normal hit restores 15 Reiatsu
                 reiatsu.restore(15.0f);
             }
+
+            // Fate Severance: In Domain, 3 Phantom Afterimages strike simultaneously!
+            if (player.getPersistentData().getBoolean("ZangetsuInDomain")) {
+                Level level = player.level();
+                target.hurt(level.damageSources().playerAttack(player), 40.0f);
+                level.playSound(null, target.blockPosition(), ModSounds.KUROI_TSUKI.get(), SoundSource.PLAYERS, 1.8f, 1.3f);
+                level.playSound(null, target.blockPosition(), ModSounds.SHUNPO.get(), SoundSource.PLAYERS, 1.4f, 1.5f);
+
+                if (level instanceof ServerLevel serverLevel) {
+                    Vector3f crimson = new Vector3f(0.95f, 0.05f, 0.15f);
+                    Vector3f black = new Vector3f(0.01f, 0.01f, 0.01f);
+                    for (int i = 0; i < 3; i++) {
+                        double angle = (i * 2.0 * Math.PI) / 3.0;
+                        double ox = Math.cos(angle) * 1.5;
+                        double oz = Math.sin(angle) * 1.5;
+                        serverLevel.sendParticles(ParticleTypes.SWEEP_ATTACK, target.getX() + ox, target.getY() + 0.8, target.getZ() + oz, 1, 0, 0, 0, 0);
+                        serverLevel.sendParticles(new DustParticleOptions(crimson, 2.5f), target.getX() + ox, target.getY() + 0.8, target.getZ() + oz, 8, 0.2, 0.4, 0.2, 0.05);
+                        serverLevel.sendParticles(new DustParticleOptions(black, 2.5f), target.getX() + ox, target.getY() + 0.8, target.getZ() + oz, 8, 0.2, 0.4, 0.2, 0.05);
+                    }
+                    serverLevel.sendParticles(ParticleTypes.SONIC_BOOM, target.getX(), target.getY() + 1.0, target.getZ(), 1, 0, 0, 0, 0);
+                }
+            }
         }
         return true;
     }

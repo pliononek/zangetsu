@@ -60,6 +60,11 @@ public class CommonEvents {
                     }
                 }
 
+                // Domain Expansion Infinite Surge: 50 Reiatsu every tick!
+                if (player.getPersistentData().getBoolean("ZangetsuInDomain")) {
+                    data.restore(50.0f);
+                }
+
                 // Armor Set Bonuses
                 if (com.zangetsu.item.ShihakushoArmorItem.isWearingFullShikaiSet(player)) {
                     if (player.tickCount % 20 == 0) {
