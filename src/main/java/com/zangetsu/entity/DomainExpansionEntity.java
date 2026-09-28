@@ -145,8 +145,9 @@ public class DomainExpansionEntity extends Entity {
         double dx = pos.x - center.x;
         double dz = pos.z - center.z;
         double horizDist = Math.sqrt(dx * dx + dz * dz);
-        double dy = pos.y - center.y;
-        if (dy < -15.0 || dy > 55.0) return false;
+        int floorY = floorBaseY - 1;
+        double dy = pos.y - (floorY + 1);
+        if (dy < -2.0 || dy > 55.0) return false;
         double val = Math.max(0.0, 1.0 - Math.pow(Math.max(0.0, dy) / 50.0, 2));
         double maxR = 25.0 * Math.sqrt(val);
         return horizDist <= maxR + 1.5;
@@ -223,10 +224,11 @@ public class DomainExpansionEntity extends Entity {
         BlockPos centerPos = blockPosition();
         int cx = centerPos.getX();
         int cz = centerPos.getZ();
+        int floorY = floorBaseY - 1;
 
-        // Tick 1: Initialize 100% black concrete floor across domain radius & set up invisible lighting
+        // Tick 1: Initialize 100% flat black concrete floor at player's Y & clear arena
         if (tick == 1) {
-            initFloor(level, cx, cz, floorBaseY);
+            initFloor(level, cx, cz, floorY);
         }
 
         // Build dome layer by layer from ground (h=0) to top (h=50)
@@ -235,7 +237,7 @@ public class DomainExpansionEntity extends Entity {
 
         // Sound & spiritual pressure resonance: rising pitch as dome closes
         float pitch = 0.8f + (h / 50.0f) * 0.6f;
-        level.playSound(null, centerPos.offset(0, h, 0), ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 1.8f, pitch);
+        level.playSound(null, new BlockPos(cx, floorY + 1 + h, cz), ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 1.8f, pitch);
 
         // Dust particle ring at currently expanding layer height
         Vector3f crimson = new Vector3f(0.95f, 0.05f, 0.15f);
@@ -247,7 +249,7 @@ public class DomainExpansionEntity extends Entity {
             double px = cx + Math.cos(theta) * r;
             double pz = cz + Math.sin(theta) * r;
             level.sendParticles(new DustParticleOptions(crimson, 1.5f),
-                    px, centerPos.getY() + h + 0.5, pz, 1, 0, 0, 0, 0);
+                    px, floorY + 1 + h + 0.5, pz, 1, 0, 0, 0, 0);
         }
 
         // Subtle camera shake on each layer
@@ -257,7 +259,7 @@ public class DomainExpansionEntity extends Entity {
         if (tick == EXPANSION_DURATION) {
             buildDomeLayer(level, 50); // Seals apex completely
 
-            level.playSound(null, centerPos.offset(0, 50, 0), ModSounds.DOMAIN_EXPAND.get(), SoundSource.PLAYERS, 4.0f, 1.0f);
+            level.playSound(null, new BlockPos(cx, floorY + 51, cz), ModSounds.DOMAIN_EXPAND.get(), SoundSource.PLAYERS, 4.0f, 1.0f);
             level.playSound(null, centerPos, ModSounds.BANKAI.get(), SoundSource.PLAYERS, 3.5f, 0.85f);
             PacketDistributor.sendToPlayer(owner, new CameraShakePayload(50, 4.5f));
 
@@ -267,7 +269,7 @@ public class DomainExpansionEntity extends Entity {
         }
     }
 
-    private void initFloor(ServerLevel level, int cx, int cz, int baseY) {
+    private void initFloor(ServerLevel level, int cx, int cz, int floorY) {
         int r = (int) Math.ceil(DEFAULT_RADIUS);
         BlockState blackConcrete = Blocks.BLACK_CONCRETE.defaultBlockState();
         BlockState lightState = Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15);
@@ -275,24 +277,23 @@ public class DomainExpansionEntity extends Entity {
         for (int x = -r; x <= r; x++) {
             for (int z = -r; z <= r; z++) {
                 if (x * x + z * z <= r * r) {
-                    int wx = cx + x;
-                    int wz = cz + z;
-                    BlockPos floorPos = findSurfacePos(level, wx, wz, baseY);
+                    BlockPos floorPos = new BlockPos(cx + x, floorY, cz + z);
                     setDomainBlock(level, floorPos, blackConcrete);
 
-                    // Clear non-solid foliage/weeds/flowers/grass directly above the black concrete floor
-                    BlockPos above = floorPos.above();
-                    BlockState aboveState = level.getBlockState(above);
-                    if (!aboveState.isAir() && !aboveState.is(ModBlocks.DOMAIN_BARRIER.get()) && !aboveState.is(Blocks.BLACK_CONCRETE)) {
-                        if (!aboveState.isSolid() || aboveState.is(BlockTags.FLOWERS) || aboveState.is(BlockTags.REPLACEABLE)) {
-                            setDomainBlock(level, above, Blocks.AIR.defaultBlockState());
+                    // Clear inside the dome above the floor so trees, leaves, and hills don't clutter the flat arena
+                    int maxClear = Math.min(22, (int) Math.floor(50.0 * Math.sqrt(Math.max(0.0, 1.0 - (x * x + z * z) / (25.0 * 25.0)))) - 2);
+                    for (int y = floorY + 1; y <= floorY + maxClear; y++) {
+                        BlockPos clearPos = new BlockPos(cx + x, y, cz + z);
+                        BlockState st = level.getBlockState(clearPos);
+                        if (!st.isAir() && !st.is(ModBlocks.DOMAIN_BARRIER.get())) {
+                            setDomainBlock(level, clearPos, Blocks.AIR.defaultBlockState());
                         }
                     }
 
-                    // Place invisible light blocks on a grid of every 5 blocks to brightly illuminate the interior
+                    // Place invisible light blocks on a grid of every 5 blocks to brightly illuminate the flat interior
                     if (x % 5 == 0 && z % 5 == 0) {
-                        setDomainBlock(level, floorPos.above(3), lightState);
-                        setDomainBlock(level, floorPos.above(8), lightState);
+                        setDomainBlock(level, floorPos.above(2), lightState);
+                        setDomainBlock(level, floorPos.above(7), lightState);
                     }
                 }
             }
@@ -303,62 +304,56 @@ public class DomainExpansionEntity extends Entity {
         BlockPos centerPos = blockPosition();
         int cx = centerPos.getX();
         int cz = centerPos.getZ();
-        int cy = centerPos.getY() + h;
+        int floorY = floorBaseY - 1;
+        int cy = floorY + 1 + h;
         BlockState barrierState = ModBlocks.DOMAIN_BARRIER.get().defaultBlockState();
 
-        if (h >= 50) {
-            // Apex cap - fill solid disk at the top (radius 2)
-            for (int x = -2; x <= 2; x++) {
-                for (int z = -2; z <= 2; z++) {
-                    if (x * x + z * z <= 6) {
+        double hVal = Math.pow(h / 50.0, 2);
+        double r = 25.0 * Math.sqrt(Math.max(0.0, 1.0 - hVal));
+        int ir = (int) Math.ceil(r + 2.0);
+
+        for (int x = -ir; x <= ir; x++) {
+            for (int z = -ir; z <= ir; z++) {
+                double val = (x * x + z * z) / (25.0 * 25.0) + hVal;
+                if (val >= 0.92 && val <= 1.08) {
+                    BlockPos bpos = new BlockPos(cx + x, cy, cz + z);
+                    setDomainBlock(level, bpos, barrierState);
+
+                    // If base layer (h == 0), firmly anchor perimeter at floor level and 1 block down
+                    if (h == 0) {
+                        setDomainBlock(level, new BlockPos(cx + x, floorY, cz + z), barrierState);
+                        setDomainBlock(level, new BlockPos(cx + x, floorY - 1, cz + z), barrierState);
+                    }
+                }
+            }
+        }
+
+        // Roof capping to guarantee 100% gapless closure near apex
+        if (h == 48) {
+            for (int x = -6; x <= 6; x++) {
+                for (int z = -6; z <= 6; z++) {
+                    if (x * x + z * z <= 36) {
                         setDomainBlock(level, new BlockPos(cx + x, cy, cz + z), barrierState);
                     }
                 }
             }
-            return;
-        }
-
-        double val = Math.max(0.0, 1.0 - Math.pow(h / 50.0, 2));
-        double r = 25.0 * Math.sqrt(val);
-        int ir = (int) Math.ceil(r + 1.0);
-
-        for (int x = -ir; x <= ir; x++) {
-            for (int z = -ir; z <= ir; z++) {
-                double d = Math.sqrt(x * x + z * z);
-                if (d >= (r - 0.8) && d <= (r + 0.7)) {
-                    BlockPos bpos = new BlockPos(cx + x, cy, cz + z);
-                    setDomainBlock(level, bpos, barrierState);
-
-                    // If base layer (h == 0), firmly anchor down into terrain so no gaps underneath!
-                    if (h == 0) {
-                        int terrainY = findSurfacePos(level, cx + x, cz + z, centerPos.getY()).getY();
-                        int minY = Math.min(centerPos.getY() - 1, terrainY - 1);
-                        for (int yDown = centerPos.getY() - 1; yDown >= minY; yDown--) {
-                            setDomainBlock(level, new BlockPos(cx + x, yDown, cz + z), barrierState);
-                        }
+        } else if (h == 49) {
+            for (int x = -5; x <= 5; x++) {
+                for (int z = -5; z <= 5; z++) {
+                    if (x * x + z * z <= 25) {
+                        setDomainBlock(level, new BlockPos(cx + x, cy, cz + z), barrierState);
+                    }
+                }
+            }
+        } else if (h >= 50) {
+            for (int x = -4; x <= 4; x++) {
+                for (int z = -4; z <= 4; z++) {
+                    if (x * x + z * z <= 16) {
+                        setDomainBlock(level, new BlockPos(cx + x, cy, cz + z), barrierState);
                     }
                 }
             }
         }
-    }
-
-    private BlockPos findSurfacePos(ServerLevel level, int worldX, int worldZ, int referenceY) {
-        int hmY = level.getHeight(Heightmap.Types.MOTION_BLOCKING, worldX, worldZ) - 1;
-        if (Math.abs(hmY - referenceY) <= 30) {
-            return new BlockPos(worldX, hmY, worldZ);
-        }
-
-        // Raycast down from referenceY + 15
-        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos(worldX, referenceY + 15, worldZ);
-        for (int y = referenceY + 15; y >= referenceY - 35; y--) {
-            mpos.setY(y);
-            BlockState st = level.getBlockState(mpos);
-            if (!st.isAir() && !st.is(ModBlocks.DOMAIN_BARRIER.get())) {
-                return mpos.immutable();
-            }
-        }
-
-        return new BlockPos(worldX, hmY, worldZ);
     }
 
     private void setDomainBlock(ServerLevel level, BlockPos pos, BlockState newState) {
