@@ -38,95 +38,19 @@ public class DomainExpansionRenderer extends EntityRenderer<DomainExpansionEntit
     @Override
     public void render(DomainExpansionEntity entity, float entityYaw, float partialTicks,
                        PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
-        poseStack.pushPose();
-
-        float radius = entity.getRadius();
-        float age = entity.tickCount + partialTicks;
-        float pulse = (float) Math.sin(age * 0.15f);
-
-        int red = Math.min(255, (int) (200 + pulse * 45));
-        int green = Math.max(0, (int) (30 + pulse * 15));
-        int blue = Math.max(0, (int) (40 + pulse * 20));
-        int alpha = 235;
-
-        VertexConsumer consumer = buffer.getBuffer(RenderType.entityTranslucentEmissive(BARRIER_TEXTURE));
-        Matrix4f matrix = poseStack.last().pose();
-
-        // 1. Render Monumental 100-Block Spherical Shell
-        renderSphericalBarrier(matrix, consumer, radius, red, green, blue, alpha);
-
-        poseStack.popPose();
-
-        // 2. Render Ethereal Avatars (Vasto Lorde Mask & Quincy Shadow) behind Owner
+        // Render Ethereal Avatars (Vasto Lorde Mask & Quincy Shadow) behind Owner
         Optional<UUID> ownerUUID = entity.getOwnerUUID();
         if (ownerUUID.isPresent()) {
             Player owner = entity.level().getPlayerByUUID(ownerUUID.get());
             if (owner != null && owner.isAlive()) {
                 double ownerDist = owner.position().distanceTo(entity.position());
-                if (ownerDist <= radius) {
+                if (ownerDist <= entity.getRadius()) {
                     renderOwnerShadows(owner, entity, partialTicks, poseStack, buffer);
                 }
             }
         }
 
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);
-    }
-
-    private void renderSphericalBarrier(Matrix4f matrix, VertexConsumer consumer, float r,
-                                        int red, int green, int blue, int alpha) {
-        int rings = 28;
-        int segments = 28;
-        int light = 0xF000F0;
-        float tile = 8.0f; // Tile cracked texture 8 times across the 100m dome
-
-        for (int i = 0; i < rings; i++) {
-            float phi0 = (float) (Math.PI * ((float) i / rings - 0.5f));
-            float phi1 = (float) (Math.PI * ((float) (i + 1) / rings - 0.5f));
-
-            float cosPhi0 = (float) Math.cos(phi0);
-            float sinPhi0 = (float) Math.sin(phi0);
-            float cosPhi1 = (float) Math.cos(phi1);
-            float sinPhi1 = (float) Math.sin(phi1);
-
-            float v0 = ((float) i / rings) * tile;
-            float v1 = ((float) (i + 1) / rings) * tile;
-
-            for (int j = 0; j < segments; j++) {
-                float theta0 = (float) (2.0 * Math.PI * (float) j / segments);
-                float theta1 = (float) (2.0 * Math.PI * (float) (j + 1) / segments);
-
-                float u0 = ((float) j / segments) * tile;
-                float u1 = ((float) (j + 1) / segments) * tile;
-
-                float x00 = r * cosPhi0 * (float) Math.cos(theta0);
-                float y00 = r * sinPhi0;
-                float z00 = r * cosPhi0 * (float) Math.sin(theta0);
-
-                float x10 = r * cosPhi1 * (float) Math.cos(theta0);
-                float y10 = r * sinPhi1;
-                float z10 = r * cosPhi1 * (float) Math.sin(theta0);
-
-                float x11 = r * cosPhi1 * (float) Math.cos(theta1);
-                float y11 = r * sinPhi1;
-                float z11 = r * cosPhi1 * (float) Math.sin(theta1);
-
-                float x01 = r * cosPhi0 * (float) Math.cos(theta1);
-                float y01 = r * sinPhi0;
-                float z01 = r * cosPhi0 * (float) Math.sin(theta1);
-
-                // Outside-facing quad
-                consumer.addVertex(matrix, x00, y00, z00).setColor(red, green, blue, alpha).setUv(u0, v0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0, 1, 0);
-                consumer.addVertex(matrix, x10, y10, z10).setColor(red, green, blue, alpha).setUv(u0, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0, 1, 0);
-                consumer.addVertex(matrix, x11, y11, z11).setColor(red, green, blue, alpha).setUv(u1, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0, 1, 0);
-                consumer.addVertex(matrix, x01, y01, z01).setColor(red, green, blue, alpha).setUv(u1, v0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0, 1, 0);
-
-                // Inside-facing quad (reversed vertex order for trapped players)
-                consumer.addVertex(matrix, x01, y01, z01).setColor(red, green, blue, alpha).setUv(u1, v0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0, -1, 0);
-                consumer.addVertex(matrix, x11, y11, z11).setColor(red, green, blue, alpha).setUv(u1, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0, -1, 0);
-                consumer.addVertex(matrix, x10, y10, z10).setColor(red, green, blue, alpha).setUv(u0, v1).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0, -1, 0);
-                consumer.addVertex(matrix, x00, y00, z00).setColor(red, green, blue, alpha).setUv(u0, v0).setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(0, -1, 0);
-            }
-        }
     }
 
     private void renderOwnerShadows(Player owner, DomainExpansionEntity entity, float partialTicks,

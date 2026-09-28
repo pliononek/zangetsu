@@ -16,6 +16,7 @@ public class ZangetsuMod {
         LOGGER.info("Initializing Tensa Zangetsu Mod (Bleach)...");
 
         ModItems.ITEMS.register(modEventBus);
+        ModBlocks.BLOCKS.register(modEventBus);
         ModArmorMaterials.ARMOR_MATERIALS.register(modEventBus);
         ModEntities.ENTITIES.register(modEventBus);
         ModSounds.SOUNDS.register(modEventBus);

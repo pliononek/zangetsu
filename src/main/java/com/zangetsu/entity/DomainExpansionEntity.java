@@ -1,11 +1,18 @@
 package com.zangetsu.entity;
 
+import com.zangetsu.init.ModBlocks;
 import com.zangetsu.init.ModEntities;
 import com.zangetsu.init.ModSounds;
 import com.zangetsu.network.CameraShakePayload;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderGetter;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -19,14 +26,15 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Vector3f;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 public class DomainExpansionEntity extends Entity {
     private static final EntityDataAccessor<Float> DATA_RADIUS =
@@ -38,8 +46,11 @@ public class DomainExpansionEntity extends Entity {
     private static final EntityDataAccessor<Optional<UUID>> DATA_OWNER =
             SynchedEntityData.defineId(DomainExpansionEntity.class, EntityDataSerializers.OPTIONAL_UUID);
 
-    public static final float DEFAULT_RADIUS = 100.0f;
+    public static final float DEFAULT_RADIUS = 25.0f; // 50 blocks diameter
     public static final int MAX_LIFETIME = 900; // 45 seconds
+
+    private final Map<BlockPos, BlockState> capturedBlocks = new HashMap<>();
+    private boolean barrierBuilt = false;
 
     public DomainExpansionEntity(EntityType<?> type, Level level) {
         super(type, level);
@@ -106,6 +117,58 @@ public class DomainExpansionEntity extends Entity {
         }
     }
 
+    public void buildBarrier(ServerLevel level) {
+        if (barrierBuilt) return;
+        barrierBuilt = true;
+
+        BlockPos centerPos = blockPosition();
+        float r = getRadius();
+        double rMin = (r - 0.7) * (r - 0.7);
+        double rMax = (r + 0.5) * (r + 0.5);
+        int ir = (int) Math.ceil(r) + 1;
+
+        BlockState barrierState = ModBlocks.DOMAIN_BARRIER.get().defaultBlockState();
+        BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
+
+        for (int x = -ir; x <= ir; x++) {
+            for (int y = -ir; y <= ir; y++) {
+                for (int z = -ir; z <= ir; z++) {
+                    double d2 = x * x + y * y + z * z;
+                    if (d2 >= rMin && d2 <= rMax) {
+                        mpos.set(centerPos.getX() + x, centerPos.getY() + y, centerPos.getZ() + z);
+                        BlockState old = level.getBlockState(mpos);
+                        if (!old.is(Blocks.BEDROCK) && !old.is(ModBlocks.DOMAIN_BARRIER.get()) && !old.hasBlockEntity()) {
+                            capturedBlocks.put(mpos.immutable(), old);
+                            level.setBlock(mpos, barrierState, 2);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void restoreBarrier(ServerLevel level) {
+        for (Map.Entry<BlockPos, BlockState> entry : capturedBlocks.entrySet()) {
+            BlockPos pos = entry.getKey();
+            if (level.getBlockState(pos).is(ModBlocks.DOMAIN_BARRIER.get())) {
+                level.setBlock(pos, entry.getValue(), 2);
+            }
+        }
+        capturedBlocks.clear();
+        barrierBuilt = false;
+    }
+
+    @Override
+    public boolean shouldRenderAtSqrDistance(double distance) {
+        return distance < 65536.0; // 256 blocks
+    }
+
+    @Override
+    public AABB getBoundingBoxForCulling() {
+        float r = getRadius() + 10.0f;
+        return new AABB(getX() - r, getY() - r, getZ() - r, getX() + r, getY() + r, getZ() + r);
+    }
+
     @Override
     public void tick() {
         super.tick();
@@ -118,11 +181,18 @@ public class DomainExpansionEntity extends Entity {
             return;
         }
 
-        // Server tick
+        ServerLevel serverLevel = (ServerLevel) level();
+
+        // Ensure physical block barrier is constructed
+        if (!barrierBuilt && !capturedBlocks.isEmpty()) {
+            barrierBuilt = true;
+        } else if (!barrierBuilt) {
+            buildBarrier(serverLevel);
+        }
+
         int life = getLifetime() + 1;
         setLifetime(life);
 
-        ServerLevel serverLevel = (ServerLevel) level();
         ServerPlayer owner = getOwnerPlayer(serverLevel);
 
         if (owner == null || !owner.isAlive() || life >= MAX_LIFETIME) {
@@ -130,7 +200,6 @@ public class DomainExpansionEntity extends Entity {
             return;
         }
 
-        // Check distance of owner to center
         double ownerDist = owner.position().distanceTo(center);
         boolean ownerInside = ownerDist <= radius;
 
@@ -154,73 +223,13 @@ public class DomainExpansionEntity extends Entity {
             return;
         }
 
-        // 1. Boundary Physics Enforcement
-        enforceBoundary(serverLevel, center, radius, owner);
-
-        // 2. Sure-Hit: Kuroi Tsuki (Omnidirectional relentless slashes)
+        // Sure-Hit: Kuroi Tsuki (Omnidirectional slashes from suspended rain)
         if (life % 20 == 0) {
             executeSureHit(serverLevel, center, radius, owner);
         }
 
-        // 3. Levitating Rain Atmosphere
+        // Levitating Rain Particles
         spawnSuspendedRain(serverLevel, center, radius, owner);
-    }
-
-    private void enforceBoundary(ServerLevel level, Vec3 center, float radius, ServerPlayer owner) {
-        AABB searchBox = new AABB(
-                center.x - radius - 8.0, center.y - radius - 8.0, center.z - radius - 8.0,
-                center.x + radius + 8.0, center.y + radius + 8.0, center.z + radius + 8.0
-        );
-
-        List<Entity> nearby = level.getEntities(this, searchBox, e -> e.isAlive() && !(e instanceof DomainExpansionEntity));
-        Vector3f crimson = new Vector3f(0.95f, 0.05f, 0.15f);
-
-        for (Entity e : nearby) {
-            double dx = e.getX() - center.x;
-            double dy = e.getY() - center.y;
-            double dz = e.getZ() - center.z;
-            double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-            if (dist < 0.001) continue;
-
-            double nx = dx / dist;
-            double ny = dy / dist;
-            double nz = dz / dist;
-
-            if (dist < radius) {
-                // INSIDE DOMAIN
-                if (e instanceof LivingEntity living && living != owner && !living.isAlliedTo(owner)) {
-                    // Crushing spiritual pressure debuffs
-                    living.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 30, 1, false, false, false));
-                    living.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 30, 0, false, false, false));
-                }
-
-                // If approaching boundary from inside, bounce back inward
-                if (dist > radius - 2.5) {
-                    Vec3 vel = e.getDeltaMovement();
-                    double dot = vel.x * nx + vel.y * ny + vel.z * nz;
-                    if (dot > 0) {
-                        e.setDeltaMovement(vel.x - dot * nx * 1.5, vel.y - dot * ny * 1.5, vel.z - dot * nz * 1.5);
-                    }
-                    e.push(-nx * 0.45, 0.05, -nz * 0.45);
-
-                    // Red barrier collision spark particles
-                    level.sendParticles(new DustParticleOptions(crimson, 2.0f),
-                            e.getX(), e.getY() + 0.9, e.getZ(), 8, 0.2, 0.4, 0.2, 0.05);
-                }
-            } else if (dist >= radius && dist < radius + 4.0) {
-                // OUTSIDE DOMAIN trying to enter - bounce outward
-                Vec3 vel = e.getDeltaMovement();
-                double dot = vel.x * nx + vel.y * ny + vel.z * nz;
-                if (dot < 0) {
-                    e.setDeltaMovement(vel.x - dot * nx * 1.5, vel.y - dot * ny * 1.5, vel.z - dot * nz * 1.5);
-                }
-                e.push(nx * 0.5, 0.05, nz * 0.5);
-
-                level.sendParticles(new DustParticleOptions(crimson, 1.8f),
-                        e.getX(), e.getY() + 0.9, e.getZ(), 6, 0.2, 0.4, 0.2, 0.05);
-            }
-        }
     }
 
     private void executeSureHit(ServerLevel level, Vec3 center, float radius, ServerPlayer owner) {
@@ -233,30 +242,26 @@ public class DomainExpansionEntity extends Entity {
             if (target == owner) return false;
             if (target.isAlliedTo(owner)) return false;
             if (target instanceof Player p && (p.isCreative() || p.isSpectator())) return false;
-            return target.position().distanceTo(center) <= radius - 2.0;
+            return target.position().distanceTo(center) <= radius - 1.5;
         });
 
         Vector3f crimson = new Vector3f(0.85f, 0.05f, 0.15f);
         Vector3f black = new Vector3f(0.01f, 0.01f, 0.01f);
 
         for (LivingEntity target : targets) {
-            // Relentless True Slicing Damage
             target.hurt(level.damageSources().playerAttack(owner), 18.0f);
+            level.playSound(null, target.blockPosition(), ModSounds.KUROI_TSUKI.get(), SoundSource.PLAYERS, 1.4f, 1.1f + level.random.nextFloat() * 0.3f);
 
-            // Audio: omnidirectional getsuga slice
-            level.playSound(null, target.blockPosition(), ModSounds.KUROI_TSUKI.get(), SoundSource.PLAYERS, 1.5f, 1.1f + level.random.nextFloat() * 0.3f);
-
-            // Visual: 4 intersecting slashing lines of black and crimson dust through target model
             Vec3 pos = target.position().add(0, target.getBbHeight() * 0.5, 0);
             for (int i = 0; i < 4; i++) {
                 double angle = i * (Math.PI / 4.0);
-                double dx = Math.cos(angle) * 1.2;
-                double dz = Math.sin(angle) * 1.2;
+                double dx = Math.cos(angle) * 1.0;
+                double dz = Math.sin(angle) * 1.0;
 
                 level.sendParticles(new DustParticleOptions(crimson, 2.0f),
-                        pos.x - dx, pos.y, pos.z - dz, 0, dx * 0.4, 0, dz * 0.4, 1.0);
+                        pos.x - dx, pos.y, pos.z - dz, 0, dx * 0.35, 0, dz * 0.35, 1.0);
                 level.sendParticles(new DustParticleOptions(black, 2.2f),
-                        pos.x + dx, pos.y, pos.z + dz, 0, -dx * 0.4, 0, -dz * 0.4, 1.0);
+                        pos.x + dx, pos.y, pos.z + dz, 0, -dx * 0.35, 0, -dz * 0.35, 1.0);
             }
 
             if (target instanceof ServerPlayer sp) {
@@ -266,7 +271,6 @@ public class DomainExpansionEntity extends Entity {
     }
 
     private void spawnSuspendedRain(ServerLevel level, Vec3 center, float radius, ServerPlayer owner) {
-        // Spawn stationary suspended crimson & black dust particles around players inside the domain
         Vector3f crimson = new Vector3f(0.85f, 0.05f, 0.15f);
         Vector3f black = new Vector3f(0.02f, 0.02f, 0.02f);
 
@@ -277,16 +281,16 @@ public class DomainExpansionEntity extends Entity {
 
         List<Player> playersInside = level.getEntitiesOfClass(Player.class, insideBox, p -> p.position().distanceTo(center) <= radius);
         for (Player p : playersInside) {
-            for (int i = 0; i < 6; i++) {
-                double rx = p.getX() + (level.random.nextDouble() - 0.5) * 36.0;
-                double ry = p.getY() + level.random.nextDouble() * 18.0 - 4.0;
-                double rz = p.getZ() + (level.random.nextDouble() - 0.5) * 36.0;
+            for (int i = 0; i < 5; i++) {
+                double rx = p.getX() + (level.random.nextDouble() - 0.5) * 24.0;
+                double ry = p.getY() + level.random.nextDouble() * 12.0 - 2.0;
+                double rz = p.getZ() + (level.random.nextDouble() - 0.5) * 24.0;
 
-                if (new Vec3(rx, ry, rz).distanceTo(center) <= radius - 1.0) {
+                if (new Vec3(rx, ry, rz).distanceTo(center) <= radius - 1.5) {
                     if (level.random.nextBoolean()) {
-                        level.sendParticles(new DustParticleOptions(crimson, 1.6f), rx, ry, rz, 1, 0, 0, 0, 0);
+                        level.sendParticles(new DustParticleOptions(crimson, 1.5f), rx, ry, rz, 1, 0, 0, 0, 0);
                     } else {
-                        level.sendParticles(new DustParticleOptions(black, 1.8f), rx, ry, rz, 1, 0, 0, 0, 0);
+                        level.sendParticles(new DustParticleOptions(black, 1.7f), rx, ry, rz, 1, 0, 0, 0, 0);
                     }
                 }
             }
@@ -303,56 +307,50 @@ public class DomainExpansionEntity extends Entity {
         Vec3 look = owner.getLookAngle();
         Vec3 bladeTip = eye.add(look.scale(1.8));
 
-        // Inward violent condensation of all suspended rain into the Horn of Salvation / Tensa Zangetsu
         for (int i = 0; i < 15; i++) {
             double angle = level.random.nextDouble() * Math.PI * 2.0;
-            double r = 4.0 + level.random.nextDouble() * 14.0;
-            double h = (level.random.nextDouble() - 0.5) * 10.0;
+            double r = 3.0 + level.random.nextDouble() * 10.0;
+            double h = (level.random.nextDouble() - 0.5) * 6.0;
             Vec3 particlePos = bladeTip.add(Math.cos(angle) * r, h, Math.sin(angle) * r);
 
-            Vec3 vel = bladeTip.subtract(particlePos).scale(0.25);
+            Vec3 vel = bladeTip.subtract(particlePos).scale(0.28);
             level.sendParticles(new DustParticleOptions(crimson, 2.5f),
                     particlePos.x, particlePos.y, particlePos.z, 0, vel.x, vel.y, vel.z, 1.0);
             level.sendParticles(new DustParticleOptions(black, 2.8f),
                     particlePos.x, particlePos.y, particlePos.z, 0, vel.x, vel.y, vel.z, 1.0);
         }
 
-        // Escalating camera shake and charging hum
         if (finisher % 5 == 0) {
             float intensity = 1.0f + (finisher / 40.0f) * 3.5f;
             PacketDistributor.sendToPlayer(owner, new CameraShakePayload(8, intensity));
         }
 
         if (finisher >= 40) {
-            // FIRE MONUMENTAL GRAN REY GETSUGA
             level.playSound(null, owner.blockPosition(), ModSounds.GRAN_REY_GETSUGA.get(), SoundSource.PLAYERS, 3.5f, 0.9f);
             level.playSound(null, owner.blockPosition(), ModSounds.GETSUGA_TENSHO.get(), SoundSource.PLAYERS, 3.0f, 0.7f);
 
-            // Piercing Dimensional Beam through the domain (120 blocks forward, 8 blocks wide)
-            double beamLength = 120.0;
+            double beamLength = 60.0;
             for (double d = 2.0; d <= beamLength; d += 1.0) {
                 Vec3 pt = eye.add(look.scale(d));
                 level.sendParticles(ParticleTypes.SONIC_BOOM, pt.x, pt.y, pt.z, 1, 0, 0, 0, 0);
-                level.sendParticles(new DustParticleOptions(crimson, 3.5f), pt.x, pt.y, pt.z, 8, 1.5, 1.5, 1.5, 0.1);
-                level.sendParticles(new DustParticleOptions(black, 4.0f), pt.x, pt.y, pt.z, 8, 1.5, 1.5, 1.5, 0.1);
-                level.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, pt.x, pt.y, pt.z, 4, 1.0, 1.0, 1.0, 0.05);
+                level.sendParticles(new DustParticleOptions(crimson, 3.5f), pt.x, pt.y, pt.z, 6, 1.2, 1.2, 1.2, 0.1);
+                level.sendParticles(new DustParticleOptions(black, 4.0f), pt.x, pt.y, pt.z, 6, 1.2, 1.2, 1.2, 0.1);
+                level.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, pt.x, pt.y, pt.z, 3, 0.8, 0.8, 0.8, 0.05);
 
-                AABB sliceBox = new AABB(pt.x - 4.0, pt.y - 4.0, pt.z - 4.0, pt.x + 4.0, pt.y + 4.0, pt.z + 4.0);
+                AABB sliceBox = new AABB(pt.x - 3.5, pt.y - 3.5, pt.z - 3.5, pt.x + 3.5, pt.y + 3.5, pt.z + 3.5);
                 List<LivingEntity> hitList = level.getEntitiesOfClass(LivingEntity.class, sliceBox, e -> e != owner && !e.isAlliedTo(owner));
                 for (LivingEntity target : hitList) {
                     target.hurt(level.damageSources().playerAttack(owner), 200.0f);
-                    target.push(look.x * 2.5, 0.8, look.z * 2.5);
+                    target.push(look.x * 2.2, 0.6, look.z * 2.2);
                 }
             }
 
-            // Monumental Camera Shake across the entire domain
-            for (Player p : level.getEntitiesOfClass(Player.class, getBoundingBox().inflate(getRadius() + 20.0))) {
+            for (Player p : level.getEntitiesOfClass(Player.class, getBoundingBox().inflate(getRadius() + 15.0))) {
                 if (p instanceof ServerPlayer sp) {
-                    PacketDistributor.sendToPlayer(sp, new CameraShakePayload(60, 5.0f));
+                    PacketDistributor.sendToPlayer(sp, new CameraShakePayload(50, 4.5f));
                 }
             }
 
-            // Collapse and shatter domain immediately
             shatter();
         }
     }
@@ -360,6 +358,8 @@ public class DomainExpansionEntity extends Entity {
     public void shatter() {
         if (!level().isClientSide) {
             ServerLevel serverLevel = (ServerLevel) level();
+            restoreBarrier(serverLevel);
+
             ServerPlayer owner = getOwnerPlayer(serverLevel);
             if (owner != null) {
                 owner.getPersistentData().remove("ZangetsuInDomain");
@@ -369,46 +369,53 @@ public class DomainExpansionEntity extends Entity {
             Vec3 center = position();
             float radius = getRadius();
 
-            // Sonic Boom & Barrier Shatter explosion audio
             serverLevel.playSound(null, blockPosition(), ModSounds.DOMAIN_SHATTER.get(), SoundSource.PLAYERS, 4.0f, 0.75f);
 
-            // Thousands of shattered crystal shards exploding along radius
             Vector3f crimson = new Vector3f(0.95f, 0.05f, 0.15f);
             Vector3f black = new Vector3f(0.01f, 0.01f, 0.01f);
 
-            for (int i = 0; i < 120; i++) {
+            for (int i = 0; i < 90; i++) {
                 double theta = serverLevel.random.nextDouble() * Math.PI * 2.0;
                 double phi = (serverLevel.random.nextDouble() - 0.5) * Math.PI;
-                double r = radius + (serverLevel.random.nextDouble() - 0.5) * 4.0;
+                double r = radius + (serverLevel.random.nextDouble() - 0.5) * 2.0;
 
                 double sx = center.x + Math.cos(phi) * Math.cos(theta) * r;
                 double sy = center.y + Math.sin(phi) * r;
                 double sz = center.z + Math.cos(phi) * Math.sin(theta) * r;
 
-                serverLevel.sendParticles(new DustParticleOptions(crimson, 3.0f), sx, sy, sz, 3, 0.5, 0.5, 0.5, 0.2);
-                serverLevel.sendParticles(new DustParticleOptions(black, 3.0f), sx, sy, sz, 3, 0.5, 0.5, 0.5, 0.2);
+                serverLevel.sendParticles(new DustParticleOptions(crimson, 3.0f), sx, sy, sz, 2, 0.4, 0.4, 0.4, 0.15);
+                serverLevel.sendParticles(new DustParticleOptions(black, 3.0f), sx, sy, sz, 2, 0.4, 0.4, 0.4, 0.15);
             }
 
-            for (Player p : serverLevel.getEntitiesOfClass(Player.class, getBoundingBox().inflate(radius + 20.0))) {
+            for (Player p : serverLevel.getEntitiesOfClass(Player.class, getBoundingBox().inflate(radius + 15.0))) {
                 if (p instanceof ServerPlayer sp) {
-                    PacketDistributor.sendToPlayer(sp, new CameraShakePayload(30, 3.5f));
+                    PacketDistributor.sendToPlayer(sp, new CameraShakePayload(25, 3.0f));
                 }
             }
         }
         this.discard();
     }
 
+    @Override
+    public void remove(RemovalReason reason) {
+        if (!level().isClientSide && reason.shouldDestroy()) {
+            if (level() instanceof ServerLevel serverLevel) {
+                restoreBarrier(serverLevel);
+            }
+        }
+        super.remove(reason);
+    }
+
     private void tickClient(Vec3 center, float radius) {
-        // Client-side ambient particle atmosphere
         Player clientPlayer = net.minecraft.client.Minecraft.getInstance().player;
         if (clientPlayer != null && clientPlayer.position().distanceTo(center) <= radius) {
             Vector3f crimson = new Vector3f(0.85f, 0.05f, 0.15f);
             Vector3f black = new Vector3f(0.01f, 0.01f, 0.01f);
 
             for (int i = 0; i < 4; i++) {
-                double rx = clientPlayer.getX() + (level().random.nextDouble() - 0.5) * 28.0;
-                double ry = clientPlayer.getY() + level().random.nextDouble() * 14.0 - 3.0;
-                double rz = clientPlayer.getZ() + (level().random.nextDouble() - 0.5) * 28.0;
+                double rx = clientPlayer.getX() + (level().random.nextDouble() - 0.5) * 22.0;
+                double ry = clientPlayer.getY() + level().random.nextDouble() * 10.0 - 2.0;
+                double rz = clientPlayer.getZ() + (level().random.nextDouble() - 0.5) * 22.0;
 
                 if (level().random.nextBoolean()) {
                     level().addParticle(new DustParticleOptions(crimson, 1.5f), rx, ry, rz, 0, 0, 0);
@@ -441,6 +448,19 @@ public class DomainExpansionEntity extends Entity {
         if (tag.contains("Finisher")) {
             setFinisherTicks(tag.getInt("Finisher"));
         }
+        if (tag.contains("CapturedBlocks", Tag.TAG_LIST)) {
+            ListTag list = tag.getList("CapturedBlocks", Tag.TAG_COMPOUND);
+            HolderGetter<Block> blockGetter = level().holderLookup(Registries.BLOCK);
+            for (int i = 0; i < list.size(); i++) {
+                CompoundTag bTag = list.getCompound(i);
+                BlockPos pos = BlockPos.of(bTag.getLong("Pos"));
+                BlockState state = NbtUtils.readBlockState(blockGetter, bTag.getCompound("State"));
+                capturedBlocks.put(pos, state);
+            }
+            if (!capturedBlocks.isEmpty()) {
+                barrierBuilt = true;
+            }
+        }
     }
 
     @Override
@@ -449,5 +469,16 @@ public class DomainExpansionEntity extends Entity {
         tag.putFloat("Radius", getRadius());
         tag.putInt("Lifetime", getLifetime());
         tag.putInt("Finisher", getFinisherTicks());
+
+        if (!capturedBlocks.isEmpty()) {
+            ListTag list = new ListTag();
+            for (Map.Entry<BlockPos, BlockState> entry : capturedBlocks.entrySet()) {
+                CompoundTag bTag = new CompoundTag();
+                bTag.putLong("Pos", entry.getKey().asLong());
+                bTag.put("State", NbtUtils.writeBlockState(entry.getValue()));
+                list.add(bTag);
+            }
+            tag.put("CapturedBlocks", list);
+        }
     }
 }

@@ -149,7 +149,7 @@ public class DomainExpansionItem extends Item {
                         data.consume(REIATSU_COST);
                     }
 
-                    // Forward offset center (75 blocks in horizontal look direction)
+                    // Forward offset center (18 blocks in horizontal look direction, 50-block diameter)
                     Vec3 look = player.getLookAngle();
                     Vec3 horizontalLook = new Vec3(look.x, 0, look.z);
                     if (horizontalLook.lengthSqr() < 0.001) {
@@ -157,11 +157,12 @@ public class DomainExpansionItem extends Item {
                     } else {
                         horizontalLook = horizontalLook.normalize();
                     }
-                    Vec3 center = player.position().add(horizontalLook.scale(75.0));
+                    Vec3 center = player.position().add(horizontalLook.scale(18.0));
 
-                    // Spawn monumental 100-block radius Domain Expansion Entity
+                    // Spawn 50-block diameter Domain Expansion Entity and build barrier blocks
                     DomainExpansionEntity domain = new DomainExpansionEntity(serverLevel, center, player);
                     serverLevel.addFreshEntity(domain);
+                    domain.buildBarrier(serverLevel);
 
                     // Sounds & Camera Shake
                     serverLevel.playSound(null, player.blockPosition(), ModSounds.DOMAIN_EXPAND.get(), SoundSource.PLAYERS, 4.0f, 1.0f);
@@ -209,7 +210,7 @@ public class DomainExpansionItem extends Item {
         tooltip.add(Component.literal("§cKsiężycowy Horyzont Złamanego Przeznaczenia"));
         tooltip.add(Component.literal(""));
         tooltip.add(Component.literal("§f[Przytrzymaj PPM] §eZnak Dłoni Tensa Zangetsu"));
-        tooltip.add(Component.literal("§7Rozszerza monumentalną barierę o promieniu §c100 bloków§7 z przodu."));
+        tooltip.add(Component.literal("§7Rozszerza krystaliczną barierę o średnicy §c50 bloków§7 z przodu."));
         tooltip.add(Component.literal("§7Wymaga odblokowanego Bankai i §b400 Reiatsu§7."));
         tooltip.add(Component.literal(""));
         tooltip.add(Component.literal("§6Wrodzone Właściwości Domeny:"));
