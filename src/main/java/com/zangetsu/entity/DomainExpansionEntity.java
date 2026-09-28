@@ -33,7 +33,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.AABB;
@@ -195,13 +194,22 @@ public class DomainExpansionEntity extends Entity {
             owner.getPersistentData().putBoolean("ZangetsuInDomain", true);
             owner.getPersistentData().putLong("ZangetsuDomainId", this.getId());
 
-            // Innate Buffs: Fate Severance (Złamanie Łańcucha)
+            // Innate Buffs: Fate Severance (Złamanie Łańcucha) + Night Vision
             owner.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 40, 2, false, false, false));
             owner.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 40, 2, false, false, false));
             owner.addEffect(new MobEffectInstance(MobEffects.JUMP, 40, 1, false, false, false));
             owner.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 40, 2, false, false, false));
+            owner.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 60, 0, false, false, false));
         } else {
             owner.getPersistentData().remove("ZangetsuInDomain");
+            owner.removeEffect(MobEffects.NIGHT_VISION);
+        }
+
+        // Night Vision for any players inside the domain
+        for (Player p : serverLevel.getEntitiesOfClass(Player.class, getBoundingBoxForCulling())) {
+            if (isInsideDomain(p.position())) {
+                p.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 60, 0, false, false, false));
+            }
         }
 
         // Handle Gran Rey Getsuga Finisher
@@ -225,6 +233,9 @@ public class DomainExpansionEntity extends Entity {
         int cx = centerPos.getX();
         int cz = centerPos.getZ();
         int floorY = floorBaseY - 1;
+
+        // Immediate Night Vision during expansion so player sees clearly
+        owner.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 60, 0, false, false, false));
 
         // Tick 1: Initialize 100% flat black concrete floor at player's Y & clear arena
         if (tick == 1) {
@@ -272,7 +283,6 @@ public class DomainExpansionEntity extends Entity {
     private void initFloor(ServerLevel level, int cx, int cz, int floorY) {
         int r = (int) Math.ceil(DEFAULT_RADIUS);
         BlockState blackConcrete = Blocks.BLACK_CONCRETE.defaultBlockState();
-        BlockState lightState = Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15);
 
         for (int x = -r; x <= r; x++) {
             for (int z = -r; z <= r; z++) {
@@ -288,12 +298,6 @@ public class DomainExpansionEntity extends Entity {
                         if (!st.isAir() && !st.is(ModBlocks.DOMAIN_BARRIER.get())) {
                             setDomainBlock(level, clearPos, Blocks.AIR.defaultBlockState());
                         }
-                    }
-
-                    // Place invisible light blocks on a grid of every 5 blocks to brightly illuminate the flat interior
-                    if (x % 5 == 0 && z % 5 == 0) {
-                        setDomainBlock(level, floorPos.above(2), lightState);
-                        setDomainBlock(level, floorPos.above(7), lightState);
                     }
                 }
             }
@@ -510,6 +514,10 @@ public class DomainExpansionEntity extends Entity {
             if (owner != null) {
                 owner.getPersistentData().remove("ZangetsuInDomain");
                 owner.getPersistentData().remove("ZangetsuDomainId");
+                owner.removeEffect(MobEffects.NIGHT_VISION);
+            }
+            for (Player p : serverLevel.getEntitiesOfClass(Player.class, getBoundingBoxForCulling())) {
+                p.removeEffect(MobEffects.NIGHT_VISION);
             }
 
             Vec3 center = position();
