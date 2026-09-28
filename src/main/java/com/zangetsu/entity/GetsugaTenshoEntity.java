@@ -1,5 +1,6 @@
 package com.zangetsu.entity;
 
+import com.zangetsu.init.ModBlocks;
 import com.zangetsu.init.ModEntities;
 import com.zangetsu.init.ModGameRules;
 import com.zangetsu.init.ModSounds;
@@ -302,8 +303,11 @@ public class GetsugaTenshoEntity extends Projectile {
         }
 
         for (BlockPos pos : blocksToBreak) {
+            if (DomainExpansionEntity.isProtectedFromDestruction(serverLevel, pos)) {
+                continue; // Protected domain floor, barrier, or interior!
+            }
             BlockState state = serverLevel.getBlockState(pos);
-            if (!state.isAir() && state.getBlock() != Blocks.BEDROCK && state.getDestroySpeed(serverLevel, pos) >= 0) {
+            if (!state.isAir() && state.getBlock() != Blocks.BEDROCK && !state.is(ModBlocks.DOMAIN_BARRIER.get()) && state.getDestroySpeed(serverLevel, pos) >= 0) {
                 if (charge >= 0.8f || bankai || state.getDestroySpeed(serverLevel, pos) <= 10.0f) {
                     serverLevel.destroyBlock(pos, false);
                 }
@@ -312,7 +316,8 @@ public class GetsugaTenshoEntity extends Projectile {
     }
 
     private void detonate() {
-        boolean allowGriefing = !isBossGetsuga() && this.level().getGameRules().getBoolean(ModGameRules.RULE_ZANGETSU_GRIEFING);
+        boolean inDomain = DomainExpansionEntity.isInsideAnyDomain(this.level(), this.position());
+        boolean allowGriefing = !isBossGetsuga() && !inDomain && this.level().getGameRules().getBoolean(ModGameRules.RULE_ZANGETSU_GRIEFING);
         Level.ExplosionInteraction interaction = allowGriefing ? Level.ExplosionInteraction.MOB : Level.ExplosionInteraction.NONE;
         this.level().explode(this, this.getX(), this.getY(), this.getZ(), 3.0f + getCharge() * 4.0f, interaction);
 

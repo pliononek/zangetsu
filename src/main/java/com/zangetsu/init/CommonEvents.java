@@ -194,5 +194,13 @@ public class CommonEvents {
                 }
             }
         }
+
+        @SubscribeEvent
+        public static void onExplosionDetonate(net.neoforged.neoforge.event.level.ExplosionEvent.Detonate event) {
+            net.minecraft.world.level.Level level = event.getLevel();
+            if (!level.isClientSide()) {
+                event.getAffectedBlocks().removeIf(pos -> com.zangetsu.entity.DomainExpansionEntity.isProtectedFromDestruction(level, pos));
+            }
+        }
     }
 }

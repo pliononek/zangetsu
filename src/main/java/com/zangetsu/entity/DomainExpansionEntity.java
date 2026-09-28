@@ -53,9 +53,55 @@ public class DomainExpansionEntity extends Entity {
             SynchedEntityData.defineId(DomainExpansionEntity.class, EntityDataSerializers.OPTIONAL_UUID);
 
     public static final float DEFAULT_RADIUS = 25.0f; // 50 blocks diameter
-    public static final int MAX_HEIGHT = 50;
-    public static final int EXPANSION_DURATION = 50; // 50 layers, 1 layer per tick = 2.5s
+    public static final int MAX_HEIGHT = 25; // Perfect 1:1 hemispherical dome (radius 25, height 25)
+    public static final int EXPANSION_DURATION = 50; // 50 ticks = 2.5s expansion
     public static final int MAX_LIFETIME = 900; // 45 seconds
+
+    private static final Set<DomainExpansionEntity> ACTIVE_DOMAINS = Collections.synchronizedSet(new HashSet<>());
+
+    public static boolean isProtectedFromDestruction(Level level, BlockPos pos) {
+        if (level.isClientSide) return false;
+        synchronized (ACTIVE_DOMAINS) {
+            for (DomainExpansionEntity domain : ACTIVE_DOMAINS) {
+                if (domain.level() == level && domain.isAlive()) {
+                    if (domain.isDomainBlockOrFloor(pos)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean isInsideAnyDomain(Level level, Vec3 pos) {
+        if (level.isClientSide) return false;
+        synchronized (ACTIVE_DOMAINS) {
+            for (DomainExpansionEntity domain : ACTIVE_DOMAINS) {
+                if (domain.level() == level && domain.isAlive()) {
+                    if (domain.isInsideDomain(pos)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean isDomainBlockOrFloor(BlockPos pos) {
+        if (capturedBlocks.containsKey(pos)) {
+            return true;
+        }
+        int floorY = floorBaseY - 1;
+        if (pos.getY() <= floorY && pos.getY() >= floorY - 3) {
+            BlockPos centerPos = blockPosition();
+            int dx = pos.getX() - centerPos.getX();
+            int dz = pos.getZ() - centerPos.getZ();
+            if (dx * dx + dz * dz <= 27 * 27) {
+                return true;
+            }
+        }
+        return isInsideDomain(Vec3.atCenterOf(pos));
+    }
 
     private final Map<BlockPos, BlockState> capturedBlocks = new HashMap<>();
     private int expansionTicks = 0;
@@ -135,8 +181,8 @@ public class DomainExpansionEntity extends Entity {
 
     @Override
     public AABB getBoundingBoxForCulling() {
-        return new AABB(getX() - 32.0, getY() - 15.0, getZ() - 32.0,
-                getX() + 32.0, getY() + 60.0, getZ() + 32.0);
+        return new AABB(getX() - 30.0, getY() - 10.0, getZ() - 30.0,
+                getX() + 30.0, getY() + 32.0, getZ() + 30.0);
     }
 
     public boolean isInsideDomain(Vec3 pos) {
@@ -146,9 +192,9 @@ public class DomainExpansionEntity extends Entity {
         double horizDist = Math.sqrt(dx * dx + dz * dz);
         int floorY = floorBaseY - 1;
         double dy = pos.y - (floorY + 1);
-        if (dy < -2.0 || dy > 55.0) return false;
-        double val = Math.max(0.0, 1.0 - Math.pow(Math.max(0.0, dy) / 50.0, 2));
-        double maxR = 25.0 * Math.sqrt(val);
+        if (dy < -2.0 || dy > 28.0) return false;
+        double val = Math.max(0.0, 25.0 * 25.0 - Math.pow(Math.max(0.0, dy), 2));
+        double maxR = Math.sqrt(val);
         return horizDist <= maxR + 1.5;
     }
 
@@ -163,6 +209,8 @@ public class DomainExpansionEntity extends Entity {
             tickClient(center, radius);
             return;
         }
+
+        ACTIVE_DOMAINS.add(this);
 
         ServerLevel serverLevel = (ServerLevel) level();
         ServerPlayer owner = getOwnerPlayer(serverLevel);
@@ -242,20 +290,21 @@ public class DomainExpansionEntity extends Entity {
             initFloor(level, cx, cz, floorY);
         }
 
-        // Build dome layer by layer from ground (h=0) to top (h=50)
-        int h = tick - 1; // 0 to 49
-        buildDomeLayer(level, h);
+        // Build dome layer by layer: 25 layers over 50 ticks (1 layer every 2 ticks)
+        int h = (tick - 1) / 2; // 0 to 24
+        if (tick % 2 == 1) {
+            buildDomeLayer(level, h);
+        }
 
         // Sound & spiritual pressure resonance: rising pitch as dome closes
-        if (h % 5 == 0) {
-            float pitch = 0.8f + (h / 50.0f) * 0.6f;
+        if (tick % 5 == 0) {
+            float pitch = 0.8f + (tick / 50.0f) * 0.6f;
             level.playSound(null, new BlockPos(cx, floorY + 1 + h, cz), ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 0.7f, pitch);
         }
 
         // Dust particle ring at currently expanding layer height
         Vector3f crimson = new Vector3f(0.95f, 0.05f, 0.15f);
-        double val = Math.max(0.0, 1.0 - Math.pow(h / 50.0, 2));
-        double r = 25.0 * Math.sqrt(val);
+        double r = Math.sqrt(Math.max(0.0, 25.0 * 25.0 - (double) (h * h)));
         int ringPoints = Math.max(8, (int) (r * 2.5));
         for (int p = 0; p < ringPoints; p++) {
             double theta = (p * 2.0 * Math.PI) / ringPoints;
@@ -266,13 +315,13 @@ public class DomainExpansionEntity extends Entity {
         }
 
         // Subtle camera shake on each layer
-        PacketDistributor.sendToPlayer(owner, new CameraShakePayload(4, 1.0f + (h / 50.0f) * 1.5f));
+        PacketDistributor.sendToPlayer(owner, new CameraShakePayload(4, 1.0f + (tick / 50.0f) * 1.5f));
 
         // Tick 50: Final Apex Seal!
         if (tick == EXPANSION_DURATION) {
-            buildDomeLayer(level, 50); // Seals apex completely
+            buildDomeLayer(level, 25); // Seals apex completely (layer 25)
 
-            level.playSound(null, new BlockPos(cx, floorY + 51, cz), ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 3.5f, 0.6f);
+            level.playSound(null, new BlockPos(cx, floorY + 26, cz), ModSounds.REIATSU_BURST.get(), SoundSource.PLAYERS, 3.5f, 0.6f);
             PacketDistributor.sendToPlayer(owner, new CameraShakePayload(50, 4.5f));
 
             owner.connection.send(new ClientboundSetTitlesAnimationPacket(10, 60, 20));
@@ -292,7 +341,8 @@ public class DomainExpansionEntity extends Entity {
                     setDomainBlock(level, floorPos, blackConcrete);
 
                     // Clear inside the dome above the floor so trees, leaves, and hills don't clutter the flat arena
-                    int maxClear = Math.min(22, (int) Math.floor(50.0 * Math.sqrt(Math.max(0.0, 1.0 - (x * x + z * z) / (25.0 * 25.0)))) - 2);
+                    int domeH = (int) Math.floor(Math.sqrt(Math.max(0.0, 25.0 * 25.0 - (x * x + z * z))));
+                    int maxClear = Math.max(0, domeH - 2);
                     for (int y = floorY + 1; y <= floorY + maxClear; y++) {
                         BlockPos clearPos = new BlockPos(cx + x, y, cz + z);
                         BlockState st = level.getBlockState(clearPos);
@@ -313,14 +363,14 @@ public class DomainExpansionEntity extends Entity {
         int cy = floorY + 1 + h;
         BlockState barrierState = ModBlocks.DOMAIN_BARRIER.get().defaultBlockState();
 
-        double hVal = Math.pow(h / 50.0, 2);
-        double r = 25.0 * Math.sqrt(Math.max(0.0, 1.0 - hVal));
+        double hVal = (double) (h * h);
+        double r = Math.sqrt(Math.max(0.0, 25.0 * 25.0 - hVal));
         int ir = (int) Math.ceil(r + 2.0);
 
         for (int x = -ir; x <= ir; x++) {
             for (int z = -ir; z <= ir; z++) {
-                double val = (x * x + z * z) / (25.0 * 25.0) + hVal;
-                if (val >= 0.92 && val <= 1.08) {
+                double val = (x * x + z * z + hVal) / (25.0 * 25.0);
+                if (val >= 0.91 && val <= 1.09) {
                     BlockPos bpos = new BlockPos(cx + x, cy, cz + z);
                     setDomainBlock(level, bpos, barrierState);
 
@@ -334,23 +384,23 @@ public class DomainExpansionEntity extends Entity {
         }
 
         // Roof capping to guarantee 100% gapless closure near apex
-        if (h == 48) {
-            for (int x = -6; x <= 6; x++) {
-                for (int z = -6; z <= 6; z++) {
-                    if (x * x + z * z <= 36) {
+        if (h == 23) {
+            for (int x = -10; x <= 10; x++) {
+                for (int z = -10; z <= 10; z++) {
+                    if (x * x + z * z <= 100) {
                         setDomainBlock(level, new BlockPos(cx + x, cy, cz + z), barrierState);
                     }
                 }
             }
-        } else if (h == 49) {
-            for (int x = -5; x <= 5; x++) {
-                for (int z = -5; z <= 5; z++) {
-                    if (x * x + z * z <= 25) {
+        } else if (h == 24) {
+            for (int x = -7; x <= 7; x++) {
+                for (int z = -7; z <= 7; z++) {
+                    if (x * x + z * z <= 49) {
                         setDomainBlock(level, new BlockPos(cx + x, cy, cz + z), barrierState);
                     }
                 }
             }
-        } else if (h >= 50) {
+        } else if (h >= 25) {
             for (int x = -4; x <= 4; x++) {
                 for (int z = -4; z <= 4; z++) {
                     if (x * x + z * z <= 16) {
@@ -382,7 +432,7 @@ public class DomainExpansionEntity extends Entity {
     private void executeSureHit(ServerLevel level, Vec3 center, float radius, ServerPlayer owner) {
         AABB hitBox = new AABB(
                 center.x - 26.0, center.y - 15.0, center.z - 26.0,
-                center.x + 26.0, center.y + 55.0, center.z + 26.0
+                center.x + 26.0, center.y + 30.0, center.z + 26.0
         );
 
         List<LivingEntity> targets = level.getEntitiesOfClass(LivingEntity.class, hitBox, target -> {
@@ -423,7 +473,7 @@ public class DomainExpansionEntity extends Entity {
 
         AABB insideBox = new AABB(
                 center.x - 26.0, center.y - 15.0, center.z - 26.0,
-                center.x + 26.0, center.y + 55.0, center.z + 26.0
+                center.x + 26.0, center.y + 30.0, center.z + 26.0
         );
 
         List<Player> playersInside = level.getEntitiesOfClass(Player.class, insideBox, p -> isInsideDomain(p.position()));
@@ -548,11 +598,13 @@ public class DomainExpansionEntity extends Entity {
                 }
             }
         }
+        ACTIVE_DOMAINS.remove(this);
         this.discard();
     }
 
     @Override
     public void remove(RemovalReason reason) {
+        ACTIVE_DOMAINS.remove(this);
         if (!level().isClientSide && reason.shouldDestroy()) {
             if (level() instanceof ServerLevel serverLevel) {
                 restoreBarrier(serverLevel);
